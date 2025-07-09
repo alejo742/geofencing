@@ -2,7 +2,58 @@
 
 ## Overview
 
-This document outlines a streamlined implementation for a simple, short-term geofencing tool using Next.js and TypeScript. This app will be used briefly (approximately one week) to collect geofence data for campus buildings.
+This document outlines a streamlined implementation for a simple, short-term geofencing tool using Next.js (App Router) and TypeScript. This app will be used briefly (approximately one week) to collect geofence data for campus buildings.
+
+## Project Structure (Next.js App Router)
+
+```
+geofencing/
+├── src/
+│   ├── app/
+│   │   ├── page.tsx                # Main page component
+│   │   ├── page.module.css         # Main page styles
+│   │   ├── layout.tsx              # Root layout
+│   │   └── globals.css             # Global styles
+│   ├── components/
+│   │   ├── styles/                 # CSS modules for components
+│   │   ├── MapView.tsx             # Map component with all map functionality
+│   │   ├── MapControls.tsx         # Zoom, center buttons
+│   │   ├── PointActions.tsx        # UI for adding/editing points
+│   │   ├── StructureList.tsx       # List of created structures
+│   │   ├── NewStructureForm.tsx    # Form to create a structure
+│   │   ├── WalkControls.tsx        # GPS walking mode controls
+│   │   ├── TriggerBandAdjuster.tsx # Thickness slider and controls
+│   │   ├── ExportButton.tsx        # Export functionality
+│   │   └── ImportButton.tsx        # Import functionality
+│   ├── lib/
+│   │   ├── storage.ts              # localStorage functions
+│   │   │   ├── saveStructures()    # Save to localStorage
+│   │   │   └── loadStructures()    # Load from localStorage
+│   │   ├── mapUtils.ts             # Map-related utilities
+│   │   │   ├── initMap()           # Initialize the map
+│   │   │   ├── addMapPoint()       # Add manual point to map
+│   │   │   ├── addWalkPoint()      # Add GPS point to structure
+│   │   │   ├── deletePoint()       # Remove a point
+│   │   │   └── movePoint()         # Move a point
+│   │   ├── geoUtils.ts             # Geospatial calculations
+│   │   │   ├── getCurrentPosition()      # Get user's GPS position
+│   │   │   ├── generateTriggerBand()     # Create band between polygons
+│   │   │   ├── updateTriggerThickness()  # Adjust band thickness
+│   │   │   └── pointsToPolygon()         # Convert points to polygon
+│   │   └── exportUtils.ts          # Export/import functionality
+│   │       ├── structuresToGeoJSON()     # Convert to GeoJSON
+│   │       ├── structuresToCustomFormat() # Convert to custom format
+│   │       ├── exportData()              # Create and download file
+│   │       └── importData()              # Parse imported JSON
+│   ├── types/
+│   │   └── index.ts                # TypeScript interfaces
+│   └── hooks/
+│       ├── useLocalStorage.ts      # Hook for localStorage operations
+│       └── useGeolocation.ts       # Hook for GPS functionality
+├── package.json
+├── next.config.js
+└── tsconfig.json
+```
 
 ## Core Functionality Only
 
@@ -13,125 +64,33 @@ Since this is a temporary tool, we'll focus exclusively on essential features:
 3. Generate trigger bands between polygons
 4. Export data in dual format (GeoJSON + custom)
 
-## Simplified Implementation Plan
-
-### Phase 1: Basic Setup & Storage
-
-1. **Next.js Project Setup**
-   - Create minimal Next.js + TypeScript project
-   - Single page application with basic styling
-
-2. **Simple Data Storage**
-   - Use localStorage as the only data store
-   - Store all maps as a single stringified JSON array
-   - Functions:
-     - `saveToLocalStorage()`: Save current maps
-     - `loadFromLocalStorage()`: Load saved maps
-
-3. **Basic UI**
-   - Simple header with app title
-   - Main content area with map
-   - Bottom toolbar with core actions
-   - Side panel for structure list
-
-### Phase 2: Map & Drawing Implementation
-
-1. **Map Integration**
-   - Add Mapbox or Leaflet map centered on Dartmouth
-   - Implement basic zoom/pan controls
-   - Functions:
-     - `initMap()`: Setup map instance
-
-2. **Simplified Polygon Creation**
-   - Add "Start New Structure" button
-   - Implement click-to-add-point on map
-   - Display points and connecting lines
-   - Allow point dragging and deletion
-   - Functions:
-     - `addPointOnClick()`: Add point when map is clicked
-     - `deletePoint()`: Remove a point
-     - `movePoint()`: Reposition a point
-
-3. **GPS Walking Mode**
-   - Add toggle button for "GPS mode"
-   - When active, show current position
-   - "Add Walk Point" button to capture GPS location
-   - Functions:
-     - `getCurrentPosition()`: Get user location
-     - `addWalkPoint()`: Add GPS point to polygon
-
-### Phase 3: Core Functionality
-
-1. **Dual Polygon Display**
-   - Show both manually-added and GPS-walked points on map
-   - Use different colors to distinguish them
-   - Functions:
-     - `renderPolygons()`: Display both sets of points
-
-2. **Simple Trigger Band Generation**
-   - Calculate middle area between polygons
-   - Add thickness slider
-   - Functions:
-     - `generateTriggerBand()`: Create band between polygons
-     - `updateThickness()`: Adjust band width
-
-3. **Dual Format Export**
-   - Export button to download JSON file
-   - Include both GeoJSON and custom format
-   - Functions:
-     - `exportData()`: Generate and download data file
-
-## Project Structure
-
-```
-evergreen-geofencing-tool/
-├── src/
-│   ├── components/
-│   │   ├── Map.tsx              # Map with drawing tools
-│   │   ├── StructureList.tsx    # List of created structures
-│   │   ├── ToolBar.tsx          # Bottom action buttons
-│   │   └── ThicknessControl.tsx # Simple slider
-│   ├── utils/
-│   │   ├── storage.ts           # localStorage functions
-│   │   ├── geoUtils.ts          # Geo calculations
-│   │   └── exportUtils.ts       # Export formatting
-│   ├── types/
-│   │   └── index.ts             # All TypeScript interfaces
-│   ├── pages/
-│   │   └── index.tsx            # Main (only) page
-│   └── styles/
-│       └── globals.css          # Basic styling
-├── package.json
-└── tsconfig.json
-```
-
 ## Data Model
 
 ```typescript
+// All in types/index.ts
 interface Point {
   lat: number;
   lng: number;
 }
 
+interface TriggerBand {
+  points: Point[];
+  thickness: number; // Width in meters
+}
+
 interface Structure {
-  id: string;                // UUID
-  name: string;              // Building name
-  mapPoints: Point[];        // Manually clicked points
-  walkPoints: Point[];       // GPS-collected points
-  triggerBand: {
-    points: Point[];         // Generated trigger area
-    thickness: number;       // Width in meters
-  };
-  lastModified: string;      // ISO date string
+  id: string;           // UUID
+  name: string;         // Building name
+  mapPoints: Point[];   // Manually clicked points
+  walkPoints: Point[];  // GPS-collected points
+  triggerBand: TriggerBand;
+  lastModified: string; // ISO date string
 }
 
 // What gets stored in localStorage
 type StoredData = Structure[];
-```
 
-## Export Format (Dual)
-
-```typescript
+// Export format
 interface ExportData {
   // Standard format for compatibility
   geoJSON: {
@@ -157,6 +116,80 @@ interface ExportData {
 }
 ```
 
+## Detailed Implementation Plan
+
+### Phase 1: Basic Setup & Storage
+
+1. **Next.js App Router Setup**
+   - Create project with: `npx create-next-app@latest`
+   - Set up `app/page.tsx` as main component
+   - Add simple responsive layout in `app/layout.tsx`
+
+2. **Simple Data Storage**
+   - Implement `storage.ts` with localStorage functions
+     - `saveStructures(structures: Structure[]): void`
+     - `loadStructures(): Structure[]`
+   - Create `useLocalStorage.ts` hook for React components to access storage
+     - `useLocalStorage<T>(key: string, initialValue: T): [T, (value: T) => void]`
+
+3. **Basic UI Structure**
+   - Create simple header in `layout.tsx`
+   - Implement `StructureList.tsx` for sidebar
+     - Display list of structures
+     - Select active structure
+   - Add `NewStructureForm.tsx` with name input field
+
+### Phase 2: Map & Drawing Implementation
+
+1. **Map Integration**
+   - Create `MapView.tsx` component using Mapbox or Leaflet
+   - Implement `mapUtils.ts` functions:
+     - `initMap(element: HTMLElement, center: Point, zoom: number): Map`
+     - `centerMap(map: Map, position: Point): void`
+   - Add `MapControls.tsx` with zoom/center buttons
+
+2. **Polygon Creation**
+   - In `MapView.tsx`, add click handler for adding map points
+   - Implement in `mapUtils.ts`:
+     - `addMapPoint(structure: Structure, point: Point): Structure`
+     - `movePoint(structure: Structure, index: number, newPos: Point, type: 'map'|'walk'): Structure`
+     - `deletePoint(structure: Structure, index: number, type: 'map'|'walk'): Structure`
+   - Create `PointActions.tsx` with controls for point manipulation
+
+3. **GPS Walking Mode**
+   - Create `useGeolocation.ts` hook:
+     - `useGeolocation(): { position: Point|null, error: string|null, accuracy: number|null }`
+   - Implement `WalkControls.tsx`:
+     - Toggle for GPS tracking
+     - Button to add current position as walk point
+   - Add to `geoUtils.ts`:
+     - `getCurrentPosition(): Promise<{position: Point, accuracy: number}>`
+     - `addWalkPoint(structure: Structure, point: Point): Structure`
+
+### Phase 3: Core Functionality
+
+1. **Dual Polygon Display**
+   - Enhance `MapView.tsx` to render both polygons with different styles
+   - Add polygon rendering utilities to `mapUtils.ts`:
+     - `renderMapPoints(map: Map, points: Point[], color: string): void`
+     - `renderWalkPoints(map: Map, points: Point[], color: string): void`
+
+2. **Trigger Band Generation**
+   - Implement in `geoUtils.ts`:
+     - `generateTriggerBand(mapPoints: Point[], walkPoints: Point[], thickness: number): Point[]`
+     - `updateTriggerThickness(structure: Structure, thickness: number): Structure`
+   - Create `TriggerBandAdjuster.tsx` with thickness slider
+   - Add auto-generation of trigger band when both polygons have enough points
+
+3. **Dual Format Export**
+   - Create `exportUtils.ts` with:
+     - `structuresToGeoJSON(structures: Structure[]): GeoJSON`
+     - `structuresToCustomFormat(structures: Structure[]): CustomFormat`
+     - `exportData(structures: Structure[]): void` (generates file download)
+   - Implement `ImportButton.tsx` and `ExportButton.tsx` components
+   - Add to `exportUtils.ts`:
+     - `importData(jsonString: string): Structure[]`
+
 ## User Flow (Simplified)
 
 1. **Starting a Structure**
@@ -169,31 +202,31 @@ interface ExportData {
 
 3. **Editing Points**
    - Drag any point to reposition
-   - Click a point to select it
+   - Click a point to select/delete it
 
 4. **Generating & Adjusting Trigger Band**
    - Once both polygons have points, trigger band appears automatically
    - Adjust thickness using simple slider
 
 5. **Saving & Exporting**
-   - Work is saved to localStorage automatically every small interval
+   - Work is saved to localStorage automatically every 30 seconds
    - Click "Export" to download complete data file
 
 ## Implementation Notes
 
 1. **Keep It Simple**
-   - No complex state management library - use React's useState
-   - Minimal validation and error handling
-   - Focus on core functionality only
+   - Use React's built-in `useState` and `useEffect` hooks
+   - Minimal error handling - focus on the happy path
+   - Use basic TypeScript interfaces without complex type features
 
 2. **Performance Considerations**
-   - No need for virtualization or optimized rendering
-   - Simple direct DOM operations are fine
-   - Avoid premature optimization
+   - Small dataset means we don't need complex optimization
+   - Direct DOM manipulation for map is acceptable
+   - No server-side rendering needed - make it a client component
 
 3. **Styling**
-   - Basic, functional styling is sufficient
-   - Use simple CSS but responsive
+   - Use simple CSS or minimal Tailwind
+   - Focus on mobile-friendly controls for field use
 
 ## Development Timeline
 
