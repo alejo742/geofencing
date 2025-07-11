@@ -190,7 +190,7 @@ interface ExportData {
    - Add to `exportUtils.ts`:
      - `importData(jsonString: string): Structure[]`
 
-## User Flow (Simplified)
+## User Flow
 
 1. **Starting a Structure**
    - Click "New Structure" and enter name

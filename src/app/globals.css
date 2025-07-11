@@ -395,6 +395,71 @@
       background-color: #f9f9f9;
   }
 
+/* Custom map marker styles */
+.custom-div-icon {
+  background: transparent;
+  border: none;
+}
+
+.marker-pin {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.marker-pin:hover {
+  transform: scale(1.1);
+}
+
+/* Crosshair cursor for add point modes */
+.map-add-mode {
+  cursor: crosshair !important;
+}
+
+/* Layer visibility controls */
+.hide-structures .structure-polygon,
+.hide-structures .structure-point {
+  display: none !important;
+}
+
+.hide-walkPoints .walk-point {
+  display: none !important;
+}
+
+.hide-triggerBands .trigger-band {
+  display: none !important;
+}
+
+.hide-labels .leaflet-tooltip {
+  display: none !important;
+}
+
+/* Custom map marker styles */
+.custom-div-icon {
+  background: transparent;
+  border: none;
+}
+
+.marker-pin {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.marker-pin:hover {
+  transform: scale(1.1);
+}
+
+.animate-ping {
+  animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes ping {
+  75%, 100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
 
   /* Scale up for larger screens */
 @media (min-width: 1440px) {

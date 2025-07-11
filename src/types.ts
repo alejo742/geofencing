@@ -45,4 +45,19 @@ interface ExportData {
   };
 }
 
-export type { Point, TriggerBand, Structure, StoredData, ExportData };
+// Map view state
+interface MapViewState {
+  center: Point;
+  zoom: number;
+}
+
+// Editing modes for the map
+type MapMode = 'view' | 'addMapPoints' | 'addWalkPoints' | 'editPoints' | 'triggerBand' | 'walking';
+
+// Structure with computed properties (for rendering)
+interface StructureWithComputed extends Structure {
+  bounds?: L.LatLngBounds;
+  area?: number;
+}
+
+export type { Point, TriggerBand, Structure, StoredData, ExportData, MapViewState, MapMode, StructureWithComputed };

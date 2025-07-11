@@ -1,25 +1,88 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { AppProvider } from '@/context/AppContext';
+import DynamicMap from '@/components/map/DynamicMapView';
 import StructureList from '@/components/StructureList';
-import NewStructureForm from '@/components/NewStructureForm';
-import styles from './page.module.css';
+import StructureDetails from '@/components/StructureDetails';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 export default function Home() {
+  // Track if window is mobile size
+  const [isMobile, setIsMobile] = useState(false);
+  // Track if sidebar is open (for mobile)
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Add client-side rendering flag
+  const [isClient, setIsClient] = useState(false);
+
+  // Handle resize to check if mobile and set client-side flag
+  useEffect(() => {
+    setIsClient(true);
+    
+    const checkIfMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    // Initial check
+    checkIfMobile();
+    
+    // Add resize listener
+    window.addEventListener('resize', checkIfMobile);
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener('resize', checkIfMobile);
+    };
+  }, []);
+
   return (
-    <>
-      <aside className="w-full md:w-64 border-r border-gray-200 flex flex-col">
-        <div className="p-4">
-          <NewStructureForm />
-          <StructureList />
-        </div>
-      </aside>
-      
-      <section className="flex-1 bg-gray-50 flex items-center justify-center">
-        <div className="text-center text-gray-500">
-          <p className="mb-2">Map will be displayed here in Phase 2</p>
-          <p className="text-sm">Select or create a structure to get started</p>
-        </div>
-      </section>
-    </>
+    <ErrorBoundary>
+      <AppProvider>
+        <main className="flex flex-col h-screen w-screen overflow-hidden">
+          {/* Header */}
+          <header className="bg-green-700 text-white p-4 shadow-md z-10 flex-shrink-0">
+            <div className="flex justify-between items-center">
+              
+              {/* Mobile toggle button - only shown on client */}
+              {isClient && isMobile && (
+                <button
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  className="p-2 rounded bg-green-800 hover:bg-green-900"
+                >
+                  {sidebarOpen ? 'Close Sidebar' : 'Open Sidebar'}
+                </button>
+              )}
+            </div>
+          </header>
+          
+          {/* Main content - adjusted to take full height */}
+          <div className="flex flex-1 overflow-hidden h-[calc(100vh-4rem)]"> {/* Subtract header height */}
+            {/* Sidebar - conditionally shown on mobile */}
+            <aside 
+              className={`bg-white border-r border-gray-200 w-80 flex-shrink-0 flex flex-col overflow-hidden
+                        ${isClient && isMobile ? 'absolute top-16 bottom-0 z-20 shadow-lg transition-transform duration-300 ease-in-out ' + 
+                                     (sidebarOpen ? 'translate-x-0' : '-translate-x-full') : ''}`}
+            >
+              <div className="p-4 border-b border-gray-200 flex-shrink-0">
+                <h2 className="text-lg font-semibold text-gray-800">Structures</h2>
+              </div>
+              
+              <div className="overflow-y-auto flex-1">
+                <StructureList closeSidebar={() => setSidebarOpen(false)} />
+              </div>
+              
+              <div className="border-t border-gray-200 flex-shrink-0">
+                <StructureDetails />
+              </div>
+            </aside>
+            
+            {/* Main map container - now takes full remaining height */}
+            <div className="flex-1 relative h-full">
+              <DynamicMap />
+            </div>
+          </div>
+        </main>
+      </AppProvider>
+    </ErrorBoundary>
   );
 }

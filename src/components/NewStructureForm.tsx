@@ -1,13 +1,20 @@
 'use client';
 
-import { useState } from 'react';
-import { useStructures } from '@/hooks/useStructures';
+import { useState, useEffect } from 'react';
+import { useApp } from '@/hooks/useApp';
 
 export default function NewStructureForm() {
   const [name, setName] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const { addStructure } = useStructures();
-
+  const { addStructure } = useApp();
+  
+  // Add client-side only rendering
+  const [isClient, setIsClient] = useState(false);
+  
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+  
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (name.trim()) {
@@ -16,6 +23,19 @@ export default function NewStructureForm() {
       setIsFormOpen(false);
     }
   };
+  
+  if (!isClient) {
+    return (
+      <div className="mt-4 mb-6">
+        <button
+          disabled
+          className="w-full bg-gray-300 text-white py-2 px-4 rounded"
+        >
+          Loading...
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-4 mb-6">
