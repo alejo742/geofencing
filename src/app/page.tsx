@@ -42,7 +42,7 @@ export default function Home() {
           {/* Header */}
           <header className="bg-green-700 text-white p-4 shadow-md z-10 flex-shrink-0">
             <div className="flex justify-between items-center">
-              
+              <h1 className="text-xl font-bold">Evergreen Geofencing Tool</h1>
               {/* Mobile toggle button - only shown on client */}
               {isClient && isMobile && (
                 <button
@@ -60,7 +60,7 @@ export default function Home() {
             {/* Sidebar - conditionally shown on mobile */}
             <aside 
               className={`bg-white border-r border-gray-200 w-80 flex-shrink-0 flex flex-col overflow-hidden
-                        ${isClient && isMobile ? 'absolute top-16 bottom-0 z-20 shadow-lg transition-transform duration-300 ease-in-out ' + 
+                        ${isClient && isMobile ? 'absolute top-16 bottom-0 z-25 shadow-lg transition-transform duration-300 ease-in-out ' + 
                                      (sidebarOpen ? 'translate-x-0' : '-translate-x-full') : ''}`}
             >
               <div className="p-4 border-b border-gray-200 flex-shrink-0">

@@ -113,7 +113,9 @@ export default function StructureLayer({ map }: StructureLayerProps) {
           opacity: isActive ? 0.9 : 0.7,
           fillColor: isActive ? '#4CAF50' : '#3388ff',
           fillOpacity: isActive ? 0.3 : 0.2,
-          className: 'structure-polygon' // Used for layer visibility
+          className: 'structure-polygon', // Used for layer visibility
+          interactive: mapMode === 'view',
+          bubblingMouseEvents: true,
         });
         
         // Don't add click handlers in edit mode

@@ -15,8 +15,6 @@
    ========================================================================== */
    *, *::before, *::after {
     box-sizing: border-box;
-    margin: 0;
-    padding: 0;
     scroll-behavior: smooth;
     font-family: "neue-haas-grotesk-display", Helvetica, sans-serif;
   }
@@ -434,7 +432,17 @@
   display: none !important;
 }
 
-/* Custom map marker styles */
+.animate-ping {
+  animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* Map container styles */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+}
+
+/* Custom marker styles */
 .custom-div-icon {
   background: transparent;
   border: none;
@@ -450,8 +458,109 @@
   transform: scale(1.1);
 }
 
+/* Structure polygon styles */
+.structure-polygon {
+  transition: fill-opacity 0.2s, stroke-width 0.2s;
+}
+
+.structure-polygon:hover {
+  fill-opacity: 0.4 !important;
+}
+
+/* Label styles */
+.structure-label {
+  background: rgba(255, 255, 255, 0.8);
+  border: none;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Walking mode indicator */
 .animate-ping {
   animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes ping {
+  75%, 100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+/* Point visibility controls */
+.leaflet-control-layers {
+  border-radius: 4px;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+}
+
+.leaflet-control-layers-toggle {
+  width: 36px;
+  height: 36px;
+  background-size: 20px 20px;
+}
+
+/* Utility for hiding elements */
+.hidden {
+  display: none !important;
+}
+
+/* Animation for loading states */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Trigger band styling */
+.trigger-band {
+  transition: fill-opacity 0.3s;
+}
+
+.trigger-band:hover {
+  fill-opacity: 0.3 !important;
+}
+
+.trigger-band-line {
+  transition: opacity 0.3s;
+}
+
+.trigger-band-line:hover {
+  opacity: 1 !important;
+}
+
+/* Make sure controls are above other elements */
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 10;
+}
+
+/* Handle mobile styles */
+@media (max-width: 768px) {
+  .leaflet-control-zoom {
+    margin-left: 10px;
+  }
+  
+  .structure-label {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+}
+
+/* Fix height issue on mobile browsers where vh doesn't work as expected */
+@supports (-webkit-touch-callout: none) {
+  .h-screen {
+    height: -webkit-fill-available;
+  }
 }
 
 @keyframes ping {

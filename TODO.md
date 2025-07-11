@@ -5,10 +5,11 @@
 ### Tasks:
 - [ ] Handle cases when walking polygon won't overlap with the normal polygon
 - [ ] Improve user experience when adding points (walking and clicking)
-- [ ] Improve styling and interface (e.g. visual error messages, and intuitive & pretty UI).
+- [ ] Improve styling and interface (e.g. visual error messages, popup/tooltip confirmation, and intuitive & pretty UI).
 - [ ] Enable data persistence by allowing imports and exports in both JSON files or JSON-formatted text.
 
 ### Fixes:
+- [ ] Fix responsiveness (mobile devices) for map controls
 - [ ] Test and fix the walking functionality (can't test it since I am in Peru!)
 - [ ] Test and fix the trigger band functionality (can't test it since I am in Peru!)
 

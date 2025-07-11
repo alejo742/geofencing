@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useCallback, useState, useEffect, ReactNode } from 'react';
 import { Structure, Point, MapMode, MapViewState } from '@/types';
 import { saveStructures, loadStructures } from '@/lib/storage';
 import { addMapPoint, movePoint, deletePoint } from '@/utils/mapUtils';
@@ -33,6 +33,8 @@ type AppContextType = {
   addPointToStructure: (point: Point, type: 'map' | 'walk') => void;
   movePointInStructure: (index: number, newPos: Point, type: 'map' | 'walk') => void;
   deletePointFromStructure: (index: number, type: 'map' | 'walk') => void;
+  undoLastAction: () => void;
+  canUndo: boolean; // Added this property
   
   // Trigger band functions
   updateTriggerBandThickness: (thickness: number) => void;
@@ -68,6 +70,70 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return null;
     }
   });
+
+  const [actionHistory, setActionHistory] = useState<Array<{
+    type: string;
+    structureId: string;
+    data: any;
+  }>>([]);
+  
+  // Find the active structure
+  const activeStructure = structures.find(s => s.id === activeStructureId) || null;
+  
+  const undoLastAction = useCallback(() => {
+    if (actionHistory.length === 0) return;
+    
+    const lastAction = actionHistory[actionHistory.length - 1];
+    const structure = structures.find(s => s.id === lastAction.structureId);
+    
+    if (!structure) return;
+    
+    let updatedStructure;
+    
+    switch (lastAction.type) {
+      case 'ADD_MAP_POINT':
+        // Remove the last added map point
+        updatedStructure = {
+          ...structure,
+          mapPoints: structure.mapPoints.slice(0, -1)
+        };
+        break;
+        
+      case 'ADD_WALK_POINT':
+        // Remove the last added walk point
+        updatedStructure = {
+          ...structure,
+          walkPoints: structure.walkPoints.slice(0, -1)
+        };
+        break;
+        
+      case 'ADD_TRIGGER_POINT':
+        // Remove the last added trigger point
+        if (structure.triggerBand) {
+          updatedStructure = {
+            ...structure,
+            triggerBand: {
+              ...structure.triggerBand,
+              points: structure.triggerBand.points.slice(0, -1)
+            }
+          };
+        }
+        break;
+        
+      // Add more cases for other operations as needed
+      
+      default:
+        return;
+    }
+    
+    // Update the structure
+    if (updatedStructure) {
+      updateStructure(updatedStructure);
+    }
+    
+    // Remove the action from history
+    setActionHistory(prev => prev.slice(0, -1));
+  }, [actionHistory, structures]);  
   
   // Map-related state
   const [mapState, setMapState] = useState<MapViewState>(() => {
@@ -115,9 +181,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [mapState]);
   
-  // Find the active structure
-  const activeStructure = structures.find(s => s.id === activeStructureId) || null;
-  
   // Simple functions without unnecessary memoization
   function refreshStructures() {
     try {
@@ -153,6 +216,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     setStructures(prev => [...prev, newStructure]);
     setActiveStructureId(newStructure.id);
+
     return newStructure;
   }
   
@@ -183,12 +247,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let updatedStructure;
     if (type === 'map') {
       updatedStructure = addMapPoint(activeStructure, point);
+      
+      // Add to history
+      setActionHistory(prev => [...prev, {
+        type: 'ADD_MAP_POINT',
+        structureId: activeStructure.id,
+        data: point
+      }]);
     } else {
       updatedStructure = {
         ...activeStructure,
         walkPoints: [...activeStructure.walkPoints, point],
         lastModified: new Date().toISOString()
       };
+      
+      // Add to history
+      setActionHistory(prev => [...prev, {
+        type: 'ADD_WALK_POINT',
+        structureId: activeStructure.id,
+        data: point
+      }]);
     }
     
     updateStructure(updatedStructure);
@@ -236,6 +314,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       lastModified: new Date().toISOString()
     };
     
+    // Add to history
+    setActionHistory(prev => [...prev, {
+      type: 'ADD_TRIGGER_POINT',
+      structureId: activeStructure.id,
+      data: point
+    }]);
+    
     updateStructure(updatedStructure);
   }
   
@@ -260,10 +345,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addPointToStructure,
     movePointInStructure,
     deletePointFromStructure,
+    undoLastAction,
+    canUndo: actionHistory.length > 0, // Added canUndo property
     
     // Trigger band
     updateTriggerBandThickness,
-    addPointToTriggerBand
+    addPointToTriggerBand,
   };
   
   return (

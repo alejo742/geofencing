@@ -15,12 +15,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>
+      <body className="h-screen w-screen overflow-hidden">
         <AppProvider>
-          <header className="bg-green-800 text-white p-4 shadow-md">
-            <h1 className="text-xl font-bold">Evergreen Geofencing Tool</h1>
-          </header>
-          <main className="flex flex-col md:flex-row h-[calc(100vh-64px)]">
+          <main className="flex flex-col md:flex-row relative h-full w-full">
             {children}
           </main>
         </AppProvider>
