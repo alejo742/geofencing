@@ -6,9 +6,11 @@ import type L from 'leaflet';
 
 // Dynamic imports for components that use Leaflet
 const StructureLayer = dynamic(() => import('./StructureLayer'), { ssr: false });
-const PointActions = dynamic(() => import('./PointActions'), { ssr: false });
-const WalkControls = dynamic(() => import('./WalkControls'), { ssr: false });
+const MapControls = dynamic(() => import('./MapControls'), { ssr: false });
 const TriggerBandControls = dynamic(() => import('./TriggerBandControls'), { ssr: false });
+const WalkSimulation = dynamic(() => import('../sim/WalkSimulation'), { ssr: false });
+const ImportButton = dynamic(() => import('../buttons/ImportButton'), { ssr: false });
+const ExportButton = dynamic(() => import('../buttons/ExportButton'), { ssr: false });
 
 // Define the props type that MapView expects
 interface MapViewProps {
@@ -20,7 +22,14 @@ const DynamicMapView = dynamic<MapViewProps>(
   () => import('./MapView'), 
   { 
     ssr: false,
-    loading: () => <div className="w-full h-full bg-gray-100 flex items-center justify-center">Loading Map...</div>
+    loading: () => (
+      <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+        <div className="flex flex-col items-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500 mb-4"></div>
+          <p className="text-gray-600">Loading Map...</p>
+        </div>
+      </div>
+    )
   }
 );
 
@@ -34,12 +43,26 @@ export default function Map() {
   return (
     <div className="relative w-full h-full flex-grow">
       <DynamicMapView onMapReady={handleMapReady} />
+      
       {mapInstance && (
         <>
+          {/* Map layers and interactive elements */}
           <StructureLayer map={mapInstance} />
-          <PointActions map={mapInstance} />
-          <WalkControls map={mapInstance} />
+          
+          {/* Control panels */}
+          <MapControls map={mapInstance} />
+          
+          {/* Trigger band controls appear when in that mode */}
           <TriggerBandControls map={mapInstance} />
+          
+          {/* Walk simulation controls */}
+          <WalkSimulation map={mapInstance} />
+          
+          {/* Import/Export buttons in the top-right */}
+          <div className="absolute top-4 right-4 z-20 flex items-center space-x-2">
+            <ImportButton />
+            <ExportButton />
+          </div>
         </>
       )}
     </div>

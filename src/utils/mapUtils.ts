@@ -1,10 +1,10 @@
-import type L from 'leaflet'; // Type import only
+import type L from 'leaflet'; // Import only the types, not the actual library
 import { Point, Structure } from '@/types';
 
 // Type guard function to check if we're in browser
 const isBrowser = () => typeof window !== 'undefined';
 
-// Get Leaflet instance safely
+// Get Leaflet instance safely (only on client-side)
 const getLeaflet = (): typeof L => {
   if (!isBrowser()) {
     throw new Error('Leaflet can only be used in browser environment');
@@ -20,6 +20,10 @@ export function initMap(
   center: Point = { lat: 43.7044, lng: -72.2887 },
   zoom: number = 16
 ): L.Map {
+  if (!isBrowser()) {
+    throw new Error('Map can only be initialized in browser environment');
+  }
+  
   const L = getLeaflet();
   
   const map = L.map(element).setView([center.lat, center.lng], zoom);
@@ -37,6 +41,7 @@ export function initMap(
  * Center map on specified position
  */
 export function centerMap(map: L.Map, position: Point, zoom?: number): void {
+  if (!map) return;
   map.setView([position.lat, position.lng], zoom || map.getZoom());
 }
 
@@ -51,6 +56,10 @@ export function leafletToPoint(latLng: L.LatLng): Point {
  * Convert our Point to Leaflet LatLng
  */
 export function pointToLeaflet(point: Point): L.LatLng {
+  if (!isBrowser()) {
+    throw new Error('Cannot create LatLng in server environment');
+  }
+  
   const L = getLeaflet();
   return new L.LatLng(point.lat, point.lng);
 }
@@ -59,7 +68,7 @@ export function pointToLeaflet(point: Point): L.LatLng {
  * Calculate bounds for a structure's points
  */
 export function getStructureBounds(structure: Structure): L.LatLngBounds | null {
-  if (!structure.mapPoints.length) {
+  if (!isBrowser() || !structure.mapPoints.length) {
     return null;
   }
   
@@ -74,6 +83,7 @@ export function getStructureBounds(structure: Structure): L.LatLngBounds | null 
 
 /**
  * Add a map point to a structure
+ * (This function doesn't use Leaflet directly, so it's safe for server-side)
  */
 export function addMapPoint(structure: Structure, point: Point): Structure {
   return {
@@ -85,6 +95,7 @@ export function addMapPoint(structure: Structure, point: Point): Structure {
 
 /**
  * Move a point in a structure
+ * (This function doesn't use Leaflet directly, so it's safe for server-side)
  */
 export function movePoint(
   structure: Structure, 
@@ -107,6 +118,7 @@ export function movePoint(
 
 /**
  * Delete a point from a structure
+ * (This function doesn't use Leaflet directly, so it's safe for server-side)
  */
 export function deletePoint(
   structure: Structure, 
@@ -125,7 +137,133 @@ export function deletePoint(
   };
 }
 
-// Other utility functions remain the same - they don't use Leaflet directly
+/**
+ * Render map points as a polygon
+ */
+export function renderMapPoints(
+  map: L.Map, 
+  points: Point[], 
+  options: {
+    color?: string,
+    fillColor?: string,
+    fillOpacity?: number,
+    weight?: number,
+    interactive?: boolean,
+    className?: string
+  } = {}
+): L.Polygon | null {
+  if (!isBrowser() || !map || !points.length) return null;
+  
+  const L = getLeaflet();
+  
+  const defaultOptions = {
+    color: '#22c55e', // Green
+    fillColor: '#22c55e',
+    fillOpacity: 0.2,
+    weight: 3,
+    interactive: true,
+    className: 'structure-polygon'
+  };
+  
+  const mergedOptions = { ...defaultOptions, ...options };
+  
+  const latLngs = points.map(point => L.latLng(point.lat, point.lng));
+  
+  // Close the polygon if it has at least 3 points
+  if (latLngs.length >= 3) {
+    const polygon = L.polygon(latLngs, mergedOptions).addTo(map);
+    return polygon;
+  }
+  
+  return null;
+}
+
+/**
+ * Render walk points as a polygon
+ */
+export function renderWalkPoints(
+  map: L.Map, 
+  points: Point[], 
+  options: {
+    color?: string,
+    fillColor?: string,
+    fillOpacity?: number,
+    weight?: number,
+    interactive?: boolean,
+    className?: string
+  } = {}
+): L.Polygon | null {
+  if (!isBrowser() || !map || !points.length) return null;
+  
+  const L = getLeaflet();
+  
+  const defaultOptions = {
+    color: '#3b82f6', // Blue
+    fillColor: '#3b82f6',
+    fillOpacity: 0.2,
+    weight: 2,
+    interactive: true,
+    className: 'walk-polygon'
+  };
+  
+  const mergedOptions = { ...defaultOptions, ...options };
+  
+  const latLngs = points.map(point => L.latLng(point.lat, point.lng));
+  
+  // Close the polygon if it has at least 3 points
+  if (latLngs.length >= 3) {
+    const polygon = L.polygon(latLngs, mergedOptions).addTo(map);
+    return polygon;
+  }
+  
+  return null;
+}
+
+/**
+ * Render trigger band as a polygon
+ */
+export function renderTriggerBand(
+  map: L.Map,
+  points: Point[],
+  options: {
+    color?: string,
+    fillColor?: string,
+    fillOpacity?: number,
+    weight?: number,
+    interactive?: boolean,
+    className?: string
+  } = {}
+): L.Polygon | null {
+  if (!isBrowser() || !map || !points.length) return null;
+  
+  const L = getLeaflet();
+  
+  const defaultOptions = {
+    color: '#a855f7', // Purple
+    fillColor: '#a855f7',
+    fillOpacity: 0.3,
+    weight: 2,
+    interactive: true,
+    className: 'trigger-band'
+  };
+  
+  const mergedOptions = { ...defaultOptions, ...options };
+  
+  const latLngs = points.map(point => L.latLng(point.lat, point.lng));
+  
+  // Close the polygon if it has at least 3 points
+  if (latLngs.length >= 3) {
+    const polygon = L.polygon(latLngs, mergedOptions).addTo(map);
+    return polygon;
+  }
+  
+  return null;
+}
+
+/**
+ * Calculate area in square meters
+ * (This function doesn't use Leaflet directly, so it's safe for server-side)
+ */
 export function calculateAreaInSquareMeters(points: Point[]): number {
   if (points.length < 3) {
     return 0;
@@ -153,6 +291,10 @@ export function calculateAreaInSquareMeters(points: Point[]): number {
   return Math.abs(area) / 2;
 }
 
+/**
+ * Check if a point is inside a polygon
+ * (This function doesn't use Leaflet directly, so it's safe for server-side)
+ */
 export function isPointInPolygon(point: Point, polygon: Point[]): boolean {
   if (polygon.length < 3) {
     return false;

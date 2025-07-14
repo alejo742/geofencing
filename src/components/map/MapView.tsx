@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useApp } from '@/hooks/useApp';
-import { initMap, centerMap } from '@/utils/mapUtils';
+import { initMap, centerMap, getStructureBounds } from '@/utils/mapUtils';
 import type L from 'leaflet';
 
 interface MapViewProps {
@@ -12,7 +12,7 @@ interface MapViewProps {
 export default function MapView({ onMapReady }: MapViewProps) {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const { activeStructure, mapState, setMapState } = useApp();
+  const { activeStructure, mapState, setMapState, mapMode } = useApp();
   
   // Import Leaflet icons only on client side
   useEffect(() => {
@@ -32,6 +32,14 @@ export default function MapView({ onMapReady }: MapViewProps) {
       mapState.center,
       mapState.zoom
     );
+    
+    // Add zoom control to top-right corner
+    if (typeof window !== 'undefined') {
+      const L = require('leaflet');
+      L.control.zoom({
+        position: 'topright'
+      }).addTo(map);
+    }
     
     mapRef.current = map;
     
@@ -76,26 +84,79 @@ export default function MapView({ onMapReady }: MapViewProps) {
     const zoomChanged = currentZoom !== mapState.zoom;
     
     if (centerChanged || zoomChanged) {
-      mapRef.current.setView(
-        [mapState.center.lat, mapState.center.lng], 
-        mapState.zoom
-      );
+      // Don't interrupt user if they're actively adding points or in walking mode
+      if (mapMode === 'view' || mapMode === 'editPoints') {
+        mapRef.current.setView(
+          [mapState.center.lat, mapState.center.lng], 
+          mapState.zoom
+        );
+      }
     }
-  }, [mapState]);
+  }, [mapState, mapMode]);
   
   // Center map on active structure when it changes
   useEffect(() => {
-    if (!mapRef.current || !activeStructure || activeStructure.mapPoints.length === 0) return;
+    if (!mapRef.current || !activeStructure) return;
     
-    // Calculate center of structure points
-    const points = activeStructure.mapPoints;
-    const center = {
-      lat: points.reduce((sum, p) => sum + p.lat, 0) / points.length,
-      lng: points.reduce((sum, p) => sum + p.lng, 0) / points.length
-    };
-    
-    centerMap(mapRef.current, center);
+    // If structure has map points, center on those
+    if (activeStructure.mapPoints.length > 0) {
+      // Calculate center of map points
+      const points = activeStructure.mapPoints;
+      const center = {
+        lat: points.reduce((sum, p) => sum + p.lat, 0) / points.length,
+        lng: points.reduce((sum, p) => sum + p.lng, 0) / points.length
+      };
+      
+      // Use bounds if there are enough points to form a polygon
+      if (points.length >= 3) {
+        const bounds = getStructureBounds(activeStructure);
+        if (bounds && mapRef.current) {
+          mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+        } else {
+          centerMap(mapRef.current, center);
+        }
+      } else {
+        centerMap(mapRef.current, center);
+      }
+    } 
+    // If no map points but has walk points, center on those
+    else if (activeStructure.walkPoints.length > 0) {
+      const points = activeStructure.walkPoints;
+      const center = {
+        lat: points.reduce((sum, p) => sum + p.lat, 0) / points.length,
+        lng: points.reduce((sum, p) => sum + p.lng, 0) / points.length
+      };
+      
+      centerMap(mapRef.current, center);
+    }
+    // If has trigger band points, center on those
+    else if (activeStructure.triggerBand?.points.length > 0) {
+      const points = activeStructure.triggerBand.points;
+      const center = {
+        lat: points.reduce((sum, p) => sum + p.lat, 0) / points.length,
+        lng: points.reduce((sum, p) => sum + p.lng, 0) / points.length
+      };
+      
+      centerMap(mapRef.current, center);
+    }
   }, [activeStructure]);
+  
+  // Update cursor style based on map mode
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+    
+    if (mapMode === 'addMapPoints' || mapMode === 'addWalkPoints' || mapMode === 'triggerBand') {
+      mapContainerRef.current.style.cursor = 'crosshair';
+    } else {
+      mapContainerRef.current.style.cursor = '';
+    }
+    
+    return () => {
+      if (mapContainerRef.current) {
+        mapContainerRef.current.style.cursor = '';
+      }
+    };
+  }, [mapMode]);
   
   return (
     <div className="w-full h-full relative">

@@ -4,6 +4,7 @@ import { createContext, useCallback, useState, useEffect, ReactNode } from 'reac
 import { Structure, Point, MapMode, MapViewState } from '@/types';
 import { saveStructures, loadStructures } from '@/lib/storage';
 import { addMapPoint, movePoint, deletePoint } from '@/utils/mapUtils';
+import { updateTriggerThickness } from '@/utils/geoUtils';
 
 // Default map state
 const DEFAULT_MAP_STATE: MapViewState = {
@@ -34,11 +35,15 @@ type AppContextType = {
   movePointInStructure: (index: number, newPos: Point, type: 'map' | 'walk') => void;
   deletePointFromStructure: (index: number, type: 'map' | 'walk') => void;
   undoLastAction: () => void;
-  canUndo: boolean; // Added this property
+  canUndo: boolean;
   
   // Trigger band functions
   updateTriggerBandThickness: (thickness: number) => void;
   addPointToTriggerBand: (point: Point) => void;
+  updateTriggerBand: (points: Point[]) => void;
+  
+  // Import/Export functions
+  saveImportedStructures: (structures: Structure[]) => void;
 };
 
 // Create the context with default values
@@ -181,7 +186,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [mapState]);
   
-  // Simple functions without unnecessary memoization
+  // Structure operations
   function refreshStructures() {
     try {
       const refreshedStructures = loadStructures();
@@ -240,7 +245,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }
   
-  // Point manipulation functions - simplified
+  // Point manipulation functions
   function addPointToStructure(point: Point, type: 'map' | 'walk') {
     if (!activeStructure) return;
     
@@ -286,19 +291,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateStructure(updatedStructure);
   }
   
-  // Trigger band functions - simplified
+  // Trigger band functions
   function updateTriggerBandThickness(thickness: number) {
     if (!activeStructure) return;
     
-    const updatedStructure = {
-      ...activeStructure,
-      triggerBand: {
-        ...activeStructure.triggerBand,
-        thickness
-      },
-      lastModified: new Date().toISOString()
-    };
-    
+    const updatedStructure = updateTriggerThickness(activeStructure, thickness);
     updateStructure(updatedStructure);
   }
   
@@ -324,6 +321,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateStructure(updatedStructure);
   }
   
+  // New function to update trigger band with generated points
+  function updateTriggerBand(points: Point[]) {
+    if (!activeStructure) return;
+    
+    const updatedStructure = {
+      ...activeStructure,
+      triggerBand: {
+        ...activeStructure.triggerBand,
+        points
+      },
+      lastModified: new Date().toISOString()
+    };
+    
+    updateStructure(updatedStructure);
+  }
+  
+  // New function to save imported structures
+  function saveImportedStructures(importedStructures: Structure[]) {
+    
+    // Generate new IDs for imported structures to avoid conflicts
+    const structuresToAdd = importedStructures.map(structure => ({
+      ...structure,
+      id: crypto.randomUUID(), // Always generate a new ID
+      lastModified: new Date().toISOString()
+    }));
+    
+    // Add the imported structures to the existing ones
+    setStructures(prev => [...prev, ...structuresToAdd]);
+    
+    // Select the first imported structure if available
+    if (structuresToAdd.length > 0) {
+      setActiveStructureId(structuresToAdd[0].id);
+    }
+  }
+  
   const value = {
     // Structure state
     structures,
@@ -346,12 +378,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     movePointInStructure,
     deletePointFromStructure,
     undoLastAction,
-    canUndo: actionHistory.length > 0, // Added canUndo property
+    canUndo: actionHistory.length > 0,
     
     // Trigger band
     updateTriggerBandThickness,
     addPointToTriggerBand,
+    updateTriggerBand,
+    
+    // Import/Export
+    saveImportedStructures,
   };
+  
+  // Expose AppContext for debugging if needed
+  if (typeof window !== 'undefined') {
+    (window as any).__APP_CONTEXT__ = value;
+  }
   
   return (
     <AppContext.Provider value={value}>
