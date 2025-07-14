@@ -6,6 +6,7 @@ interface Point {
 interface TriggerBand {
   points: Point[];
   thickness: number; // Width in meters
+  calculatedPoints?: Point[]; // Generated points for the actual band area
 }
 
 interface Structure {
@@ -20,29 +21,45 @@ interface Structure {
 // What gets stored in localStorage
 type StoredData = Structure[];
 
-// Export format
+// GeoJSON feature types
+interface GeoJSONFeature {
+  type: "Feature";
+  properties: {
+    structureId?: string;
+    name?: string;
+    type?: string;
+    thickness?: number;
+    lastModified?: string;
+  };
+  geometry: {
+    type: string;
+    coordinates: any;
+  };
+}
+
+// GeoJSON collection
+interface GeoJSONCollection {
+  type: "FeatureCollection";
+  features: GeoJSONFeature[];
+}
+
+// Custom export format
+interface CustomFormat {
+  version: string;
+  structures: Structure[];
+  metadata: {
+    exportedAt: string;
+    appVersion: string;
+  };
+}
+
+// Export format types
 interface ExportData {
   // Standard format for compatibility
-  geoJSON: {
-    type: "FeatureCollection";
-    features: Array<{
-      type: "Feature";
-      properties: { name: string; type: string; };
-      geometry: { type: "Polygon"; coordinates: number[][][]; };
-    }>;
-  };
+  geoJSON: GeoJSONCollection;
   
   // Custom format for our app
-  customFormat: {
-    structures: Array<{
-      id: string;
-      name: string;
-      mapPoints: Point[];
-      walkPoints: Point[];
-      triggerBand: { points: Point[]; thickness: number; };
-    }>;
-    exportDate: string;
-  };
+  customFormat: CustomFormat;
 }
 
 // Map view state
@@ -60,4 +77,16 @@ interface StructureWithComputed extends Structure {
   area?: number;
 }
 
-export type { Point, TriggerBand, Structure, StoredData, ExportData, MapViewState, MapMode, StructureWithComputed };
+export type { 
+  Point, 
+  TriggerBand, 
+  Structure, 
+  StoredData, 
+  GeoJSONFeature,
+  GeoJSONCollection,
+  CustomFormat,
+  ExportData, 
+  MapViewState, 
+  MapMode, 
+  StructureWithComputed 
+};

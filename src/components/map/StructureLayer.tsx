@@ -3,8 +3,9 @@
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { useApp } from '@/hooks/useApp';
-import { pointToLeaflet, leafletToPoint } from '@/utils/mapUtils';
+import { leafletToPoint } from '@/utils/mapUtils';
 import { calculateTriggerBand } from '@/utils/geoUtils';
+import { calculateTriggerBandBetweenPolygons } from '@/utils/geoUtils';
 import { Structure, Point } from '@/types';
 
 interface StructureLayerProps {
@@ -21,12 +22,14 @@ export default function StructureLayer({ map }: StructureLayerProps) {
     addPointToStructure,
     movePointInStructure,
     deletePointFromStructure,
-    addPointToTriggerBand
+    addPointToTriggerBand,
+    updateStructure
   } = useApp();
   
   const structureLayerRef = useRef<L.LayerGroup | null>(null);
   const walkPointsLayerRef = useRef<L.LayerGroup | null>(null);
   const triggerBandLayerRef = useRef<L.LayerGroup | null>(null);
+  const pointMarkersRef = useRef<L.Marker[]>([]);
   const editMarkersRef = useRef<L.Marker[]>([]);
   
   // Setup map click handler for adding points
@@ -89,6 +92,14 @@ export default function StructureLayer({ map }: StructureLayerProps) {
       triggerBandLayerRef.current.clearLayers();
     }
     
+    // Clear any existing markers
+    pointMarkersRef.current.forEach(marker => {
+      if (map.hasLayer(marker)) {
+        map.removeLayer(marker);
+      }
+    });
+    pointMarkersRef.current = [];
+    
     // Clear any existing edit markers
     editMarkersRef.current.forEach(marker => {
       if (map.hasLayer(marker)) {
@@ -137,6 +148,74 @@ export default function StructureLayer({ map }: StructureLayerProps) {
         }
       }
       
+      // Show point numbers for active structure (not just in edit mode)
+      if (isActive) {
+        // Render map point numbers for active structure
+        structure.mapPoints.forEach((point, index) => {
+          // Only create visible markers if not in edit mode (edit mode has its own markers)
+          if (mapMode !== 'editPoints') {
+            const marker = L.marker([point.lat, point.lng], {
+              icon: L.divIcon({
+                className: 'point-number-marker',
+                html: `<div class="w-8 h-8 rounded-full bg-green-600 border-2 border-white flex items-center justify-center text-white text-s font-bold">${index + 1}</div>`,
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+              })
+            });
+            
+            marker.bindTooltip(`Map Point ${index + 1}`, {
+              className: 'point-label'
+            });
+            
+            marker.addTo(map);
+            pointMarkersRef.current.push(marker);
+          }
+        });
+        
+        // Render walk point numbers for active structure
+        structure.walkPoints.forEach((point, index) => {
+          // Only create visible markers if not in edit mode (edit mode has its own markers)
+          if (mapMode !== 'editPoints') {
+            const marker = L.marker([point.lat, point.lng], {
+              icon: L.divIcon({
+                className: 'point-number-marker',
+                html: `<div class="w-5 h-5 rounded-full bg-blue-500 border-2 border-white flex items-center justify-center text-white text-xs font-bold">W${index + 1}</div>`,
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+              })
+            });
+            
+            marker.bindTooltip(`Walk Point ${index + 1}`, {
+              className: 'point-label'
+            });
+            
+            marker.addTo(map);
+            pointMarkersRef.current.push(marker);
+          }
+        });
+        
+        // Render trigger band point numbers for active structure
+        if (structure.triggerBand && structure.triggerBand.points.length > 0 && mapMode !== 'triggerBand') {
+          structure.triggerBand.points.forEach((point, index) => {
+            const marker = L.marker([point.lat, point.lng], {
+              icon: L.divIcon({
+                className: 'point-number-marker',
+                html: `<div class="w-5 h-5 rounded-full bg-purple-500 border-2 border-white flex items-center justify-center text-white text-xs font-bold">T${index + 1}</div>`,
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+              })
+            });
+            
+            marker.bindTooltip(`Trigger Point ${index + 1}`, {
+              className: 'point-label'
+            });
+            
+            marker.addTo(map);
+            pointMarkersRef.current.push(marker);
+          });
+        }
+      }
+      
       // Render individual map points as circles if fewer than 3 points
       if (structure.mapPoints.length > 0 && structure.mapPoints.length < 3) {
         structure.mapPoints.forEach((point, index) => {
@@ -167,99 +246,83 @@ export default function StructureLayer({ map }: StructureLayerProps) {
       }
       
       // Add walk points visualization
-      if (structure.walkPoints.length > 0) {
-        structure.walkPoints.forEach((point, index) => {
-          const marker = L.circleMarker([point.lat, point.lng], {
-            radius: 4,
-            color: '#2196F3',
-            weight: 2,
-            fillColor: '#2196F3',
-            fillOpacity: 0.5,
-            className: 'walk-point' // Used for layer visibility
-          });
-          
-          marker.bindTooltip(`Walk Point ${index + 1}`, {
-            className: 'structure-label' // Used for label visibility
-          });
-          
-          // Safely add to layer group
-          if (walkPointsLayerRef.current) {
-            marker.addTo(walkPointsLayerRef.current);
-          }
+      if (structure.walkPoints.length >= 3) {
+        const latLngs = structure.walkPoints.map(point => 
+          [point.lat, point.lng] as L.LatLngExpression
+        );
+        
+        const polygon = L.polygon(latLngs, {
+          color: '#2196F3',  // Blue
+          weight: isActive ? 3 : 2,
+          opacity: isActive ? 0.9 : 0.7,
+          fillColor: '#2196F3',
+          fillOpacity: 0.2,
+          className: 'walk-polygon'
         });
+        
+        if (mapMode !== 'editPoints' && mapMode !== 'triggerBand') {
+          polygon.on('click', () => {
+            setActiveStructureId(structure.id);
+          });
+        }
+        
+        polygon.bindTooltip(`${structure.name} - Inner Boundary`, {
+          className: 'structure-label'
+        });
+        
+        // Safely add to layer group
+        if (walkPointsLayerRef.current) {
+          polygon.addTo(walkPointsLayerRef.current);
+        }
       }
       
-      // Add trigger band visualization if it exists
-      if (structure.triggerBand && structure.triggerBand.points.length > 0) {
+      // visualize trigger band in case it exists
+      if (structure.triggerBand && structure.triggerBand.points.length >= 3) {
         const bandPoints = structure.triggerBand.points;
+        const latLngs = bandPoints.map(point => 
+          [point.lat, point.lng] as L.LatLngExpression
+        );
         
-        // Show trigger band points
+        // Draw the trigger band as a polyline (fence)
+        const bandPolyline = L.polyline(latLngs, {
+          color: '#9C27B0', // Purple
+          weight: 3, // Fixed width for the fence
+          opacity: 1,
+          lineCap: 'butt',
+          lineJoin: 'miter',
+          dashArray: undefined, // Solid line
+          className: 'trigger-band-fence'
+        });
+        
+        bandPolyline.bindTooltip(`${structure.name} - Trigger Band (${structure.triggerBand.thickness}m)`, {
+          className: 'trigger-band-label'
+        });
+        
+        if (triggerBandLayerRef.current) {
+          bandPolyline.addTo(triggerBandLayerRef.current);
+        }
+        
+        // Draw the trigger band vertices as markers
         bandPoints.forEach((point, index) => {
+          // Skip the last point if it's a duplicate of the first (for closing the polygon)
+          if (index === bandPoints.length - 1 && 
+              point.lat === bandPoints[0].lat && 
+              point.lng === bandPoints[0].lng) {
+            return;
+          }
+          
           const marker = L.circleMarker([point.lat, point.lng], {
             radius: 4,
             color: '#9C27B0',
-            weight: 2,
             fillColor: '#9C27B0',
-            fillOpacity: 0.5,
-            className: 'trigger-point' // Used for layer visibility
-          });
-          
-          marker.bindTooltip(`Trigger Point ${index + 1}`, {
-            className: 'structure-label' // Used for label visibility
+            fillOpacity: 1,
+            weight: 1
           });
           
           if (triggerBandLayerRef.current) {
             marker.addTo(triggerBandLayerRef.current);
           }
         });
-        
-        // Draw line connecting trigger band points
-        if (bandPoints.length >= 2) {
-          const latLngs = bandPoints.map(point => 
-            [point.lat, point.lng] as L.LatLngExpression
-          );
-          
-          const polyline = L.polyline(latLngs, {
-            color: '#9C27B0',
-            weight: 2,
-            opacity: 0.7,
-            dashArray: '5, 5',
-            className: 'trigger-band-line' // Used for layer visibility
-          });
-          
-          if (triggerBandLayerRef.current) {
-            polyline.addTo(triggerBandLayerRef.current);
-          }
-          
-          // Generate and draw the actual trigger band area
-          if (isActive) {
-            const thickness = structure.triggerBand.thickness || 5;
-            const bandPolygon = calculateTriggerBand(bandPoints, thickness);
-            
-            if (bandPolygon.length >= 3) {
-              const bandLatLngs = bandPolygon.map(point => 
-                [point.lat, point.lng] as L.LatLngExpression
-              );
-              
-              const band = L.polygon(bandLatLngs, {
-                color: '#9C27B0',
-                weight: 1,
-                opacity: 0.5,
-                fillColor: '#9C27B0',
-                fillOpacity: 0.2,
-                className: 'trigger-band' // Used for layer visibility
-              });
-              
-              band.bindTooltip(`Trigger Band (${thickness}m)`, {
-                className: 'structure-label' // Used for label visibility
-              });
-              
-              if (triggerBandLayerRef.current) {
-                band.addTo(triggerBandLayerRef.current);
-              }
-            }
-          }
-        }
       }
     });
     
@@ -350,14 +413,7 @@ export default function StructureLayer({ map }: StructureLayerProps) {
               )
             }
           };
-          // Use the existing updateStructure function
-          if (typeof window !== 'undefined') {
-            // Access updateStructure from AppContext
-            const appContext = (window as any).__APP_CONTEXT__;
-            if (appContext && appContext.updateStructure) {
-              appContext.updateStructure(updatedStructure);
-            }
-          }
+          updateStructure(updatedStructure);
         });
         
         // Add click handler for deletion
@@ -371,14 +427,7 @@ export default function StructureLayer({ map }: StructureLayerProps) {
                 points: activeStructure.triggerBand.points.filter((_, i) => i !== index)
               }
             };
-            // Use the existing updateStructure function
-            if (typeof window !== 'undefined') {
-              // Access updateStructure from AppContext
-              const appContext = (window as any).__APP_CONTEXT__;
-              if (appContext && appContext.updateStructure) {
-                appContext.updateStructure(updatedStructure);
-              }
-            }
+            updateStructure(updatedStructure);
           }
         });
         
@@ -386,7 +435,6 @@ export default function StructureLayer({ map }: StructureLayerProps) {
         editMarkersRef.current.push(marker);
       });
     }
-    
     // Cleanup on unmount
     return () => {
       if (structureLayerRef.current) {
@@ -400,6 +448,13 @@ export default function StructureLayer({ map }: StructureLayerProps) {
       if (triggerBandLayerRef.current) {
         triggerBandLayerRef.current.clearLayers();
       }
+      
+      pointMarkersRef.current.forEach(marker => {
+        if (map.hasLayer(marker)) {
+          map.removeLayer(marker);
+        }
+      });
+      pointMarkersRef.current = [];
       
       editMarkersRef.current.forEach(marker => {
         if (map.hasLayer(marker)) {
@@ -416,8 +471,85 @@ export default function StructureLayer({ map }: StructureLayerProps) {
     mapMode, 
     setActiveStructureId, 
     movePointInStructure, 
-    deletePointFromStructure
+    deletePointFromStructure,
+    updateStructure
   ]);
+
+  useEffect(() => {
+    if (activeStructure && 
+        activeStructure.mapPoints.length >= 3 && 
+        activeStructure.walkPoints.length >= 3 &&
+        mapMode !== 'triggerBand') { // Don't auto-generate when in edit mode
+      
+      console.log("Auto-generating trigger band between polygons");
+      
+      // Make sure the polygons have vertices in the same order
+      // This ensures corresponding vertices are matched correctly
+      const alignedWalkPoints = alignPolygonVertices(
+        activeStructure.walkPoints,
+        activeStructure.mapPoints
+      );
+      
+      // Calculate trigger band between the two polygons
+      const triggerPoints = calculateTriggerBandBetweenPolygons(
+        activeStructure.mapPoints,
+        alignedWalkPoints
+      );
+      
+      // Only update if we got valid points and they're different from current ones
+      if (triggerPoints.length >= 3 && 
+          JSON.stringify(triggerPoints) !== JSON.stringify(activeStructure.triggerBand.points)) {
+        
+        console.log(`Generated ${triggerPoints.length} trigger band points`);
+        
+        // Update the trigger band
+        const updatedStructure = {
+          ...activeStructure,
+          triggerBand: {
+            ...activeStructure.triggerBand,
+            points: triggerPoints
+          },
+          lastModified: new Date().toISOString()
+        };
+        
+        updateStructure(updatedStructure);
+      }
+    }
+  }, [activeStructure?.mapPoints, activeStructure?.walkPoints, activeStructure?.id, mapMode]);
+  
+  /**
+   * Align vertices of two polygons to match similar points
+   * This ensures midpoints are calculated between corresponding vertices
+   */
+  function alignPolygonVertices(walkPoints: Point[], mapPoints: Point[]): Point[] {
+    if (walkPoints.length < 3 || mapPoints.length < 3) return walkPoints;
+    
+    // Find centroid of both polygons
+    const walkCentroid = getCentroid(walkPoints);
+    const mapCentroid = getCentroid(mapPoints);
+    
+    // Sort walk points by angle from centroid
+    // This helps align vertices based on their angular position
+    const sortedWalkPoints = [...walkPoints].sort((a, b) => {
+      const angleA = Math.atan2(a.lat - walkCentroid.lat, a.lng - walkCentroid.lng);
+      const angleB = Math.atan2(b.lat - walkCentroid.lat, b.lng - walkCentroid.lng);
+      return angleA - angleB;
+    });
+    
+    return sortedWalkPoints;
+  }
+  
+  function getCentroid(points: Point[]): Point {
+    const sum = points.reduce((acc, p) => ({ 
+      lat: acc.lat + p.lat, 
+      lng: acc.lng + p.lng 
+    }), { lat: 0, lng: 0 });
+    
+    return {
+      lat: sum.lat / points.length,
+      lng: sum.lng / points.length
+    };
+  }
   
   return null; // This is a non-visual component that manipulates the map directly
 }

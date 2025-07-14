@@ -538,10 +538,59 @@
   opacity: 1 !important;
 }
 
+.trigger-band-fence {
+  /* Create a subtle pulse effect for the trigger band */
+  animation: trigger-pulse 2s infinite ease-in-out;
+}
+
+@keyframes trigger-pulse {
+  0% {
+    stroke-opacity: 0.7;
+    stroke-width: 3px;
+  }
+  50% {
+    stroke-opacity: 1;
+    stroke-width: 4px;
+  }
+  100% {
+    stroke-opacity: 0.7;
+    stroke-width: 3px;
+  }
+}
+
 /* Make sure controls are above other elements */
 .leaflet-top,
 .leaflet-bottom {
   z-index: 10;
+}
+
+.structure-polygon {
+  /* Outer boundary */
+  stroke-dasharray: none;
+  transition: fill-opacity 0.3s;
+}
+
+.walk-polygon {
+  /* Inner boundary */
+  stroke-dasharray: 5, 5;
+  transition: fill-opacity 0.3s;
+}
+
+.trigger-band-polygon {
+  /* Trigger band */
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    fill-opacity: 0.2;
+  }
+  50% {
+    fill-opacity: 0.4;
+  }
+  100% {
+    fill-opacity: 0.2;
+  }
 }
 
 /* Handle mobile styles */
