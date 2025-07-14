@@ -35,7 +35,7 @@ export default function WalkSimulation({ map }: WalkSimulationProps) {
     const { points, thickness } = activeStructure.triggerBand;
     if (points.length < 2) return false;
     
-    return isPointInTriggerBand(point, points, thickness);
+    return isPointInTriggerBand(point, points);
   };
   
   // Reset simulation
