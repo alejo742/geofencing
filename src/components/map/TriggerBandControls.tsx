@@ -138,14 +138,14 @@ export default function TriggerBandControls({ map }: TriggerBandControlsProps) {
         </button>
         
         {/* Auto-generation checkbox */}
-        <div className="flex items-center">
+        <div className="flex items-center pt-4">
           <input
             type="checkbox"
             id="autoGenerateTriggerBand"
             defaultChecked={true}
-            className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+            className="h-6 w-6 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
           />
-          <label htmlFor="autoGenerateTriggerBand" className="ml-2 block text-sm text-gray-700">
+          <label htmlFor="autoGenerateTriggerBand" className="ml-2 block text-md text-gray-700">
             Auto-generate when map or walk points change
           </label>
         </div>

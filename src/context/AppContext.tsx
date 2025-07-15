@@ -98,17 +98,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     switch (lastAction.type) {
       case 'ADD_MAP_POINT':
         // Remove the last added map point
+        const updatedMapPoints = structure.mapPoints.slice(0, -1);
         updatedStructure = {
           ...structure,
-          mapPoints: structure.mapPoints.slice(0, -1)
+          mapPoints: updatedMapPoints,
+          triggerBand: updatedMapPoints.length < 3 ?
+            { ...structure.triggerBand, points: []} :
+            structure.triggerBand // replace with empty band if less than 3 points
         };
         break;
         
       case 'ADD_WALK_POINT':
         // Remove the last added walk point
+        const updatedWalkPoints = structure.walkPoints.slice(0, -1);
         updatedStructure = {
           ...structure,
-          walkPoints: structure.walkPoints.slice(0, -1)
+          walkPoints: updatedWalkPoints,
+          triggerBand: updatedWalkPoints.length < 3 ?
+            { ...structure.triggerBand, points: []} :
+            structure.triggerBand // replace with empty band if less than 3 points
         };
         break;
         
@@ -124,9 +132,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           };
         }
         break;
-        
-      // Add more cases for other operations as needed
-      
       default:
         return;
     }
@@ -288,6 +293,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!activeStructure) return;
     
     const updatedStructure = deletePoint(activeStructure, index, type);
+
+    if ((type === 'map' && updatedStructure.mapPoints.length === 0) || 
+      (type === 'walk' && updatedStructure.walkPoints.length === 0)) {
+    // If either polygon is now empty, clear the trigger band
+    updatedStructure.triggerBand = {
+      ...updatedStructure.triggerBand,
+      points: []
+    };
+  }
+
     updateStructure(updatedStructure);
   }
   

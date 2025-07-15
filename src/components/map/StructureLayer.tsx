@@ -156,7 +156,7 @@ export default function StructureLayer({ map }: StructureLayerProps) {
           if (mapMode !== 'editPoints') {
             const marker = L.marker([point.lat, point.lng], {
               icon: L.divIcon({
-                className: 'point-number-marker',
+                className: 'point-number-marker map-point-marker',
                 html: `<div class="w-8 h-8 rounded-full bg-green-600 border-2 border-white flex items-center justify-center text-white text-s font-bold">${index + 1}</div>`,
                 iconSize: [20, 20],
                 iconAnchor: [10, 10]
@@ -178,7 +178,7 @@ export default function StructureLayer({ map }: StructureLayerProps) {
           if (mapMode !== 'editPoints') {
             const marker = L.marker([point.lat, point.lng], {
               icon: L.divIcon({
-                className: 'point-number-marker',
+                className: 'point-number-marker walk-point-marker',
                 html: `<div class="w-5 h-5 rounded-full bg-blue-500 border-2 border-white flex items-center justify-center text-white text-xs font-bold">W${index + 1}</div>`,
                 iconSize: [20, 20],
                 iconAnchor: [10, 10]
@@ -199,7 +199,7 @@ export default function StructureLayer({ map }: StructureLayerProps) {
           structure.triggerBand.points.forEach((point, index) => {
             const marker = L.marker([point.lat, point.lng], {
               icon: L.divIcon({
-                className: 'point-number-marker',
+                className: 'point-number-marker trigger-point-marker',
                 html: `<div class="w-5 h-5 rounded-full bg-purple-500 border-2 border-white flex items-center justify-center text-white text-xs font-bold">T${index + 1}</div>`,
                 iconSize: [20, 20],
                 iconAnchor: [10, 10]
@@ -516,6 +516,93 @@ export default function StructureLayer({ map }: StructureLayerProps) {
       }
     }
   }, [activeStructure?.mapPoints, activeStructure?.walkPoints, activeStructure?.id, mapMode]);
+
+  // Handle layer visibility changes
+  useEffect(() => {
+    if (!map) return;
+    
+    const handleVisibilityChange = (event: CustomEvent<{layer: string, visible: boolean}>) => {
+      const { layer, visible } = event.detail;
+      
+      // Handle visibility changes for different layers
+      if (layer === 'mapPoints') {
+        // Toggle the map polygon layer
+        if (structureLayerRef.current) {
+          if (visible) {
+            structureLayerRef.current.addTo(map);
+          } else {
+            structureLayerRef.current.remove();
+          }
+        }
+        
+        // Toggle the map point markers
+        pointMarkersRef.current.forEach(marker => {
+          const markerElement = marker.getElement();
+          if (markerElement && markerElement.classList.contains('map-point-marker')) {
+            if (visible) {
+              marker.addTo(map);
+            } else {
+              marker.remove();
+            }
+          }
+        });
+      }
+      
+      if (layer === 'walkPoints') {
+        // Toggle the walk polygon layer
+        if (walkPointsLayerRef.current) {
+          if (visible) {
+            walkPointsLayerRef.current.addTo(map);
+          } else {
+            walkPointsLayerRef.current.remove();
+          }
+        }
+        
+        // Toggle the walk point markers
+        pointMarkersRef.current.forEach(marker => {
+          const markerElement = marker.getElement();
+          if (markerElement && markerElement.classList.contains('walk-point-marker')) {
+            if (visible) {
+              marker.addTo(map);
+            } else {
+              marker.remove();
+            }
+          }
+        });
+      }
+      
+      if (layer === 'triggerBand') {
+        // Toggle the trigger band layer
+        if (triggerBandLayerRef.current) {
+          if (visible) {
+            triggerBandLayerRef.current.addTo(map);
+          } else {
+            triggerBandLayerRef.current.remove();
+          }
+        }
+        
+        // Toggle the trigger band point markers
+        pointMarkersRef.current.forEach(marker => {
+          const markerElement = marker.getElement();
+          if (markerElement && markerElement.classList.contains('trigger-point-marker')) {
+            if (visible) {
+              marker.addTo(map);
+            } else {
+              marker.remove();
+            }
+          }
+        });
+      }
+    };
+    
+    // Add event listener
+    window.addEventListener('layer-visibility-change', handleVisibilityChange as EventListener);
+    
+    return () => {
+      // Remove event listener on cleanup
+      window.removeEventListener('layer-visibility-change', handleVisibilityChange as EventListener);
+    };
+  }, [map]);
   
   /**
    * Align vertices of two polygons to match similar points

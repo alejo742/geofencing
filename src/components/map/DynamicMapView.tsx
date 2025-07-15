@@ -7,10 +7,9 @@ import type L from 'leaflet';
 // Dynamic imports for components that use Leaflet
 const StructureLayer = dynamic(() => import('./StructureLayer'), { ssr: false });
 const MapControls = dynamic(() => import('./MapControls'), { ssr: false });
-const TriggerBandControls = dynamic(() => import('./TriggerBandControls'), { ssr: false });
-const WalkSimulation = dynamic(() => import('../sim/WalkSimulation'), { ssr: false });
 const ImportButton = dynamic(() => import('../buttons/ImportButton'), { ssr: false });
 const ExportButton = dynamic(() => import('../buttons/ExportButton'), { ssr: false });
+const LayerControls = dynamic(() => import('./LayerControls'), { ssr: false }); // Add this line
 
 // Define the props type that MapView expects
 interface MapViewProps {
@@ -51,12 +50,7 @@ export default function Map() {
           
           {/* Control panels */}
           <MapControls map={mapInstance} />
-          
-          {/* Trigger band controls appear when in that mode */}
-          <TriggerBandControls map={mapInstance} />
-          
-          {/* Walk simulation controls */}
-          <WalkSimulation map={mapInstance} />
+          <LayerControls />
           
           {/* Import/Export buttons in the top-right */}
           <div className="absolute top-4 right-4 z-20 flex items-center space-x-2">

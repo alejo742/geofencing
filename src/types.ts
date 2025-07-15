@@ -1,3 +1,10 @@
+interface WindowEventMap {
+  'layer-visibility-change': CustomEvent<{
+    layer: string;
+    visible: boolean;
+  }>;
+}
+
 interface Point {
   lat: number;
   lng: number;
