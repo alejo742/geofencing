@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { useApp } from '@/hooks/useApp';
 import { leafletToPoint } from '@/utils/mapUtils';
 import { calculateTriggerBand } from '@/utils/geoUtils';
 import { calculateTriggerBandBetweenPolygons } from '@/utils/geoUtils';
 import { Structure, Point } from '@/types';
+import { ActionTooltip } from '../ui/ActionTooltip';
 
 interface StructureLayerProps {
   map: L.Map | null;
@@ -31,6 +32,22 @@ export default function StructureLayer({ map }: StructureLayerProps) {
   const triggerBandLayerRef = useRef<L.LayerGroup | null>(null);
   const pointMarkersRef = useRef<L.Marker[]>([]);
   const editMarkersRef = useRef<L.Marker[]>([]);
+
+  const [confirmationState, setConfirmationState] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    pointIndex: number;
+    pointType: 'map' | 'walk' | 'trigger';
+    position: { x: number, y: number } | null;
+  }>({
+    show: false,
+    title: '',
+    message: '',
+    pointIndex: -1,
+    pointType: 'map',
+    position: null
+  });
   
   // Setup map click handler for adding points
   useEffect(() => {
@@ -347,10 +364,8 @@ export default function StructureLayer({ map }: StructureLayerProps) {
         });
         
         // Add click handler for deletion
-        marker.on('click', () => {
-          if (confirm(`Delete map point ${index + 1}?`)) {
-            deletePointFromStructure(index, 'map');
-          }
+        marker.on('click', (e) => {
+          showDeleteConfirmation(index, 'walk', e);
         });
         
         marker.addTo(map);
@@ -376,10 +391,8 @@ export default function StructureLayer({ map }: StructureLayerProps) {
         });
         
         // Add click handler for deletion
-        marker.on('click', () => {
-          if (confirm(`Delete walk point ${index + 1}?`)) {
-            deletePointFromStructure(index, 'walk');
-          }
+        marker.on('click', (e) => {
+          showDeleteConfirmation(index, 'walk', e);
         });
         
         marker.addTo(map);
@@ -417,18 +430,8 @@ export default function StructureLayer({ map }: StructureLayerProps) {
         });
         
         // Add click handler for deletion
-        marker.on('click', () => {
-          if (confirm(`Delete trigger band point ${index + 1}?`)) {
-            // Remove the trigger band point
-            const updatedStructure = {
-              ...activeStructure,
-              triggerBand: {
-                ...activeStructure.triggerBand,
-                points: activeStructure.triggerBand.points.filter((_, i) => i !== index)
-              }
-            };
-            updateStructure(updatedStructure);
-          }
+        marker.on('click', (e) => {
+          showDeleteConfirmation(index, 'map', e);
         });
         
         marker.addTo(map);
@@ -480,9 +483,7 @@ export default function StructureLayer({ map }: StructureLayerProps) {
         activeStructure.mapPoints.length >= 3 && 
         activeStructure.walkPoints.length >= 3 &&
         mapMode !== 'triggerBand') { // Don't auto-generate when in edit mode
-      
-      console.log("Auto-generating trigger band between polygons");
-      
+            
       // Make sure the polygons have vertices in the same order
       // This ensures corresponding vertices are matched correctly
       const alignedWalkPoints = alignPolygonVertices(
@@ -637,6 +638,77 @@ export default function StructureLayer({ map }: StructureLayerProps) {
       lng: sum.lng / points.length
     };
   }
+
+  const showDeleteConfirmation = (
+    index: number, 
+    type: 'map' | 'walk' | 'trigger', 
+    event: L.LeafletMouseEvent
+  ) => {
+    // Get the click position for positioning the tooltip
+    const clickPoint = event.containerPoint;
+    
+    setConfirmationState({
+      show: true,
+      title: `Delete ${type.charAt(0).toUpperCase() + type.slice(1)} Point`,
+      message: `Are you sure you want to delete ${type} point ${index + 1}?`,
+      pointIndex: index,
+      pointType: type,
+      position: { x: clickPoint.x, y: clickPoint.y }
+    });
+    
+    // Prevent the click from propagating to the map
+    L.DomEvent.stopPropagation(event);
+  };
   
-  return null; // This is a non-visual component that manipulates the map directly
+  // Handle actual deletion
+  const handleDeleteConfirmed = () => {
+    const { pointIndex, pointType } = confirmationState;
+    
+    if (pointType === 'map' || pointType === 'walk') {
+      deletePointFromStructure(pointIndex, pointType);
+    } else if (pointType === 'trigger' && activeStructure) {
+      // Handle trigger point deletion
+      const updatedStructure = {
+        ...activeStructure,
+        triggerBand: {
+          ...activeStructure.triggerBand,
+          points: activeStructure.triggerBand.points.filter((_, i) => i !== pointIndex)
+        }
+      };
+      updateStructure(updatedStructure);
+    }
+    
+    // Reset confirmation state
+    setConfirmationState(prev => ({ ...prev, show: false }));
+  };
+  
+  // Cancel function
+  const handleDeleteCanceled = () => {
+    setConfirmationState(prev => ({ ...prev, show: false }));
+  };
+  
+  return (
+    <>
+      {confirmationState.show && confirmationState.position && (
+        <div 
+          className="absolute z-50 pointer-events-auto" 
+          style={{ 
+            left: `${confirmationState.position.x}px`, 
+            top: `${confirmationState.position.y}px`
+          }}
+        >
+          <ActionTooltip
+            title={confirmationState.title}
+            message={confirmationState.message}
+            actionData={{
+              acceptText: "Delete",
+              cancelText: "Cancel",
+              onAccept: handleDeleteConfirmed,
+              onCancel: handleDeleteCanceled
+            }}
+          />
+        </div>
+      )}
+    </>
+  )
 }
