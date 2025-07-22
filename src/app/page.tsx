@@ -18,7 +18,8 @@ export default function Home() {
   // Testing mode state
   const [testingData, setTestingData] = useState<TestingData>({
     isActive: false,
-    boundaryType: 'trigger'
+    boundaryType: 'trigger',
+    map: null
   });
 
   // Handle resize to check if mobile and set client-side flag
@@ -80,11 +81,12 @@ export default function Home() {
                   <label className='text-md' htmlFor='toggle-testing'>Turn on Testing Mode? (beta)</label>
                 </div>
                 {/* Select which boundary we should use */}
-                <div className='py-4 flex justify-center items-center gap-2'>
+                <div className='pb-2 flex justify-center items-center gap-2'>
                   <select 
                     name="boundary-type" 
                     id="boundary-type" 
                     className='border border-gray-300 rounded p-2'
+                    defaultValue={"trigger"}
                     onChange={(e) => {
                       setTestingData(prev => ({
                         ...prev,
@@ -94,7 +96,7 @@ export default function Home() {
                   >
                     <option value="map">Map Boundary</option>
                     <option value="walk">Walk Boundary</option>
-                    <option value="trigger" selected>Trigger Boundary</option>
+                    <option value="trigger">Trigger Boundary</option>
                   </select>
                 </div>
               </div>

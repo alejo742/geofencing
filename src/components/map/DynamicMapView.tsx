@@ -39,6 +39,7 @@ export default function Map(props: { testingData: TestingData }) {
   
   const handleMapReady = (map: L.Map) => {
     setMapInstance(map);
+    props.testingData.map = mapInstance;
   };
   
   return (

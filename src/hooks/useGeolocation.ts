@@ -49,7 +49,7 @@ export function useGeolocation(): GeolocationState {
     // Get initial position
     navigator.geolocation.getCurrentPosition(handleSuccess, handleError, {
       enableHighAccuracy: true,
-      timeout: 5000,
+      timeout: 500,
       maximumAge: 0
     });
     
@@ -59,7 +59,7 @@ export function useGeolocation(): GeolocationState {
       handleError,
       {
         enableHighAccuracy: true,
-        timeout: 5000,
+        timeout: 500,
         maximumAge: 0
       }
     );
