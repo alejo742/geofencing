@@ -1,5 +1,8 @@
 import { Structure, Point } from '@/types';
 
+
+type BoundaryType = 'mapPoints' | 'walkPoints' | 'triggerBand';
+
 // GeoJSON types
 interface GeoJSONFeature {
   type: 'Feature';
@@ -23,71 +26,72 @@ interface CustomFormat {
 }
 
 /**
- * Convert structures to GeoJSON format
+ * Convert structures to GeoJSON format using the selected boundary type.
+ * For 'walkPoints' exports, it will create a LineString unless you set forcePolygon to true,
+ * which will close the line and export as a Polygon (not usually recommended).
  */
-export function structuresToGeoJSON(structures: Structure[]): GeoJSONCollection {
+export function structuresToGeoJSON(
+  structures: Structure[],
+  options?: {
+    boundaryType?: BoundaryType;
+    forcePolygon?: boolean; // if true, 'walkPoints' exports as a closed polygon
+  }
+): GeoJSONCollection {
+  const boundaryType = options?.boundaryType || 'mapPoints';
+  const forcePolygon = options?.forcePolygon || false;
+
   const features: GeoJSONFeature[] = [];
-  
+
   structures.forEach(structure => {
-    // Add the structure boundary (map points)
-    if (structure.mapPoints.length >= 3) {
-      features.push({
-        type: 'Feature',
-        geometry: {
-          type: 'Polygon',
-          coordinates: [[
-            ...structure.mapPoints.map(p => [p.lng, p.lat]),
-            [structure.mapPoints[0].lng, structure.mapPoints[0].lat] // Close the polygon
-          ]]
-        },
-        properties: {
-          structureId: structure.id,
-          name: structure.name,
-          type: 'mapPoints',
-          lastModified: structure.lastModified
-        }
-      });
+    let points: Point[] = [];
+    let geometryType = 'Polygon';
+    let extraProps: any = {};
+
+    if (boundaryType === 'mapPoints' && structure.mapPoints.length >= 3) {
+      points = structure.mapPoints;
+      geometryType = 'Polygon';
+    } else if (boundaryType === 'walkPoints' && structure.walkPoints.length >= 2) {
+      points = structure.walkPoints;
+      geometryType = forcePolygon ? 'Polygon' : 'LineString';
+    } else if (
+      boundaryType === 'triggerBand' &&
+      structure.triggerBand?.points.length >= 3
+    ) {
+      points = structure.triggerBand.points;
+      geometryType = 'Polygon';
+      extraProps.thickness = structure.triggerBand.thickness;
+    } else {
+      // Skip if selected boundary doesn't have enough points
+      return;
     }
-    
-    // Add the walk path
-    if (structure.walkPoints.length >= 2) {
-      features.push({
-        type: 'Feature',
-        geometry: {
-          type: 'LineString',
-          coordinates: structure.walkPoints.map(p => [p.lng, p.lat])
-        },
-        properties: {
-          structureId: structure.id,
-          name: structure.name,
-          type: 'walkPoints',
-          lastModified: structure.lastModified
-        }
-      });
+
+    let coordinates;
+    if (geometryType === 'Polygon') {
+      // For polygons, make sure the ring is closed
+      coordinates = [[
+        ...points.map(p => [p.lng, p.lat]),
+        [points[0].lng, points[0].lat]
+      ]];
+    } else if (geometryType === 'LineString') {
+      coordinates = points.map(p => [p.lng, p.lat]);
     }
-    
-    // Add the trigger band
-    if (structure.triggerBand?.points.length >= 3) {
-      features.push({
-        type: 'Feature',
-        geometry: {
-          type: 'Polygon',
-          coordinates: [[
-            ...structure.triggerBand.points.map(p => [p.lng, p.lat]),
-            [structure.triggerBand.points[0].lng, structure.triggerBand.points[0].lat] // Close the polygon
-          ]]
-        },
-        properties: {
-          structureId: structure.id,
-          name: structure.name,
-          type: 'triggerBand',
-          thickness: structure.triggerBand.thickness,
-          lastModified: structure.lastModified
-        }
-      });
-    }
+
+    features.push({
+      type: 'Feature',
+      geometry: {
+        type: geometryType,
+        coordinates
+      },
+      properties: {
+        structureId: structure.id,
+        name: structure.name,
+        type: boundaryType,
+        lastModified: structure.lastModified,
+        ...extraProps
+      }
+    });
   });
-  
+
   return {
     type: 'FeatureCollection',
     features
@@ -111,29 +115,33 @@ export function structuresToCustomFormat(structures: Structure[]): CustomFormat 
 /**
  * Export data as a file download
  */
-export function exportData(structures: Structure[], format: 'geojson' | 'custom' = 'custom'): void {
+export function exportData(
+  structures: Structure[],
+  format: 'geojson' | 'custom' = 'custom',
+  geojsonOptions?: { boundaryType?: BoundaryType; forcePolygon?: boolean }
+): void {
   try {
     let data: string;
     let filename: string;
-    
+
     if (format === 'geojson') {
-      data = JSON.stringify(structuresToGeoJSON(structures), null, 2);
+      data = JSON.stringify(structuresToGeoJSON(structures, geojsonOptions), null, 2);
       filename = 'structures.geojson';
     } else {
       data = JSON.stringify(structuresToCustomFormat(structures), null, 2);
       filename = 'structures.json';
     }
-    
+
     // Create blob and download link
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    
+
     link.href = url;
     link.download = filename;
     document.body.appendChild(link);
     link.click();
-    
+
     // Clean up
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
