@@ -19,7 +19,8 @@ type AppContextType = {
   activeStructureId: string | null;
   activeStructure: Structure | null;
   setActiveStructureId: (id: string | null) => void;
-  addStructure: (name: string) => Structure;
+  addStructure: (name: string, code: string) => Structure;
+  isCodeUnique: (code: string) => boolean;
   updateStructure: (structure: Structure) => void;
   refreshStructures: () => Structure[];
   deleteStructure: (id: string) => void;
@@ -210,11 +211,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return [];
     }
   }
-  
-  function addStructure(name: string) {
+
+  function isCodeUnique(code: string) {
+    return !structures.some(s => s.code?.toLowerCase() === code.trim().toLowerCase());
+  }
+
+  function addStructure(name: string, code: string) {
     const newStructure: Structure = {
       id: crypto.randomUUID(),
       name,
+      code,
       mapPoints: [],
       walkPoints: [],
       triggerBand: {
@@ -223,10 +229,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
       lastModified: new Date().toISOString()
     };
-    
+  
     setStructures(prev => [...prev, newStructure]);
     setActiveStructureId(newStructure.id);
-
+  
     return newStructure;
   }
   
@@ -378,6 +384,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     activeStructure,
     setActiveStructureId,
     addStructure,
+    isCodeUnique,
     updateStructure,
     refreshStructures,
     deleteStructure,

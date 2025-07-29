@@ -9,6 +9,8 @@ export default function StructureDetails() {
   const { activeStructure, updateStructure } = useApp();
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [code, setCode] = useState('');
   const [isClient, setIsClient] = useState(false);
 
   // Set client-side flag after mount
@@ -19,7 +21,9 @@ export default function StructureDetails() {
   // Initialize edit form when active structure changes
   useEffect(() => {
     if (activeStructure) {
-      setName(activeStructure.name);
+      setName(activeStructure.name ?? '');
+      setDescription(activeStructure.description ?? '');
+      setCode(activeStructure.code ?? '');
     }
     setIsEditing(false);
   }, [activeStructure]);
@@ -51,11 +55,13 @@ export default function StructureDetails() {
     ? calculateAreaInSquareMeters(activeStructure.mapPoints)
     : 0;
 
-  const handleSaveName = () => {
+  const handleSaveDetails = () => {
     if (name.trim() && activeStructure) {
       updateStructure({
         ...activeStructure,
-        name: name.trim()
+        name: name.trim(),
+        description: description.trim(),
+        code: code.trim()
       });
       setIsEditing(false);
     }
@@ -65,40 +71,67 @@ export default function StructureDetails() {
     <div className="p-4">
       <div className="flex justify-between items-center mb-2">
         {isEditing ? (
-          <div className="flex items-center space-x-2 w-full">
+          <div className="flex flex-col space-y-2 w-full">
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
+              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
               autoFocus
+              placeholder="Structure Name"
             />
-            <button
-              onClick={handleSaveName}
-              className="px-2 py-1 bg-green-600 text-white rounded text-xs"
-            >
-              Save
-            </button>
-            <button
-              onClick={() => {
-                setName(activeStructure.name);
-                setIsEditing(false);
-              }}
-              className="px-2 py-1 bg-gray-300 text-gray-700 rounded text-xs"
-            >
-              Cancel
-            </button>
+            <input
+              type="text"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+              placeholder="Unique Code/Identifier"
+            />
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+              placeholder="Description"
+              rows={2}
+            />
+            <div className="flex space-x-2 mt-2">
+              <button
+                onClick={handleSaveDetails}
+                className="px-2 py-1 bg-green-600 text-white rounded text-xs"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => {
+                  setName(activeStructure.name ?? '');
+                  setDescription(activeStructure.description ?? '');
+                  setCode(activeStructure.code ?? '');
+                  setIsEditing(false);
+                }}
+                className="px-2 py-1 bg-gray-300 text-gray-700 rounded text-xs"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         ) : (
-          <>
-            <h3 className="font-medium text-gray-900">{activeStructure.name}</h3>
-            <button
-              onClick={() => setIsEditing(true)}
-              className="text-blue-600 hover:text-blue-800 text-xs"
-            >
-              Edit
-            </button>
-          </>
+          <div className="w-full">
+            <div className="flex justify-between items-center">
+              <h3 className="font-medium text-gray-900">{activeStructure.name}</h3>
+              <button
+                onClick={() => setIsEditing(true)}
+                className="text-blue-600 hover:text-blue-800 text-xs"
+              >
+                Edit
+              </button>
+            </div>
+            <div className="mt-1 text-xs text-gray-500">
+              <span className="font-semibold text-gray-700">Code:</span> {activeStructure.code || <span className="italic text-gray-400">No code</span>}
+            </div>
+            <div className="mt-1 text-xs text-gray-500">
+              <span className="font-semibold text-gray-700">Description:</span> {activeStructure.description || <span className="italic text-gray-400">No description</span>}
+            </div>
+          </div>
         )}
       </div>
       

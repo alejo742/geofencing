@@ -17,12 +17,14 @@ interface TriggerBand {
 }
 
 interface Structure {
-  id: string;           // UUID
-  name: string;         // Building name
-  mapPoints: Point[];   // Manually clicked points
-  walkPoints: Point[];  // GPS-collected points
+  id: string;                 // UUID
+  code?: string;              // Unique code/identifier
+  name: string;               // Building name
+  description?: string;       // Description
+  mapPoints: Point[];         // Manually clicked points
+  walkPoints: Point[];        // GPS-collected points
   triggerBand: TriggerBand;
-  lastModified: string; // ISO date string
+  lastModified: string;       // ISO date string
 }
 
 // What gets stored in localStorage
@@ -33,7 +35,9 @@ interface GeoJSONFeature {
   type: "Feature";
   properties: {
     structureId?: string;
+    code?: string;            // Unique code/identifier (new)
     name?: string;
+    description?: string;     // Description (new)
     type?: string;
     thickness?: number;
     lastModified?: string;
@@ -62,10 +66,7 @@ interface CustomFormat {
 
 // Export format types
 interface ExportData {
-  // Standard format for compatibility
   geoJSON: GeoJSONCollection;
-  
-  // Custom format for our app
   customFormat: CustomFormat;
 }
 
@@ -84,16 +85,18 @@ interface StructureWithComputed extends Structure {
   area?: number;
 }
 
-export type { 
-  Point, 
-  TriggerBand, 
-  Structure, 
-  StoredData, 
+export type {
+  Point,
+  TriggerBand,
+  Structure,
+  StoredData,
   GeoJSONFeature,
   GeoJSONCollection,
   CustomFormat,
-  ExportData, 
-  MapViewState, 
-  MapMode, 
-  StructureWithComputed 
+  ExportData,
+  MapViewState,
+  MapMode,
+  StructureWithComputed
 };
+
+type BoundaryType = 'mapPoints' | 'walkPoints' | 'triggerBand';

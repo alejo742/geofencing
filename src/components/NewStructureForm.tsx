@@ -5,25 +5,35 @@ import { useApp } from '@/hooks/useApp';
 
 export default function NewStructureForm() {
   const [name, setName] = useState('');
+  const [code, setCode] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const { addStructure } = useApp();
-  
+  const [error, setError] = useState<string | null>(null);
+  const { addStructure, isCodeUnique } = useApp();
+
   // Add client-side only rendering
   const [isClient, setIsClient] = useState(false);
-  
+
   useEffect(() => {
     setIsClient(true);
   }, []);
-  
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (name.trim()) {
-      addStructure(name.trim());
-      setName('');
-      setIsFormOpen(false);
+    setError(null);
+    if (!name.trim() || !code.trim()) {
+      setError("Both name and code are required.");
+      return;
     }
+    if (!isCodeUnique(code.trim())) {
+      setError("Code must be unique among structures.");
+      return;
+    }
+    addStructure(name.trim(), code.trim());
+    setName('');
+    setCode('');
+    setIsFormOpen(false);
   };
-  
+
   if (!isClient) {
     return (
       <div className="mt-4 mb-6">
@@ -57,8 +67,21 @@ export default function NewStructureForm() {
               className="w-full p-2 mt-1 border rounded"
               placeholder="e.g., Baker Library"
               autoFocus
+              required
             />
           </label>
+          <label className="block mb-2 text-sm font-medium">
+            Structure Code:
+            <input
+              type="text"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              className="w-full p-2 mt-1 border rounded"
+              placeholder="e.g., BAKER"
+              required
+            />
+          </label>
+          {error && <div className="text-red-600 mb-2">{error}</div>}
           <div className="flex space-x-2 mt-3">
             <button
               type="submit"
@@ -68,7 +91,7 @@ export default function NewStructureForm() {
             </button>
             <button
               type="button"
-              onClick={() => setIsFormOpen(false)}
+              onClick={() => { setIsFormOpen(false); setError(null); }}
               className="bg-gray-300 hover:bg-gray-400 py-1 px-3 rounded text-sm"
             >
               Cancel

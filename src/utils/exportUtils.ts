@@ -84,7 +84,9 @@ export function structuresToGeoJSON(
       },
       properties: {
         structureId: structure.id,
+        code: structure.code ?? undefined,           // Export code
         name: structure.name,
+        description: structure.description ?? undefined, // Export description
         type: boundaryType,
         lastModified: structure.lastModified,
         ...extraProps
@@ -99,11 +101,11 @@ export function structuresToGeoJSON(
 }
 
 /**
- * Convert structures to our custom format
+ * Convert structures to our custom format including all boundaries and new fields.
  */
 export function structuresToCustomFormat(structures: Structure[]): CustomFormat {
   return {
-    version: '1.0',
+    version: '1.1',
     structures,
     metadata: {
       exportedAt: new Date().toISOString(),
@@ -158,35 +160,37 @@ export function importData(jsonString: string): Structure[] {
     console.log("Parsing JSON...");
     const parsed = JSON.parse(jsonString);
     console.log("Parsed JSON:", parsed);
-    
+
     // Check if it's our custom format
     if (parsed.version && Array.isArray(parsed.structures)) {
       console.log("Detected custom format");
       return parsed.structures;
     }
-    
+
     // Check if it's our metadata wrapper
     if (parsed.metadata && Array.isArray(parsed.customFormat?.structures)) {
       console.log("Detected metadata wrapper format");
       return parsed.customFormat.structures;
     }
-    
+
     // Check if it's GeoJSON
     if (parsed.type === 'FeatureCollection' && Array.isArray(parsed.features)) {
       console.log("Detected GeoJSON format");
       // Group features by structureId
       const structuresMap = new Map<string, Partial<Structure>>();
-      
+
       parsed.features.forEach((feature: GeoJSONFeature) => {
-        const { structureId, name, type, thickness } = feature.properties;
-        
+        const { structureId, code, name, description, type, thickness } = feature.properties;
+
         const id = structureId || crypto.randomUUID();
-        
+
         // Initialize structure if it doesn't exist
         if (!structuresMap.has(id)) {
           structuresMap.set(id, {
             id,
+            code: code || undefined,
             name: name || 'Imported Structure',
+            description: description || undefined,
             mapPoints: [],
             walkPoints: [],
             triggerBand: {
@@ -196,9 +200,9 @@ export function importData(jsonString: string): Structure[] {
             lastModified: new Date().toISOString()
           });
         }
-        
+
         const structure = structuresMap.get(id)!;
-        
+
         // Handle different feature types
         if (type === 'mapPoints' && feature.geometry.type === 'Polygon') {
           // Extract map points from the first ring of the polygon
@@ -208,7 +212,7 @@ export function importData(jsonString: string): Structure[] {
               lat: coord[1],
               lng: coord[0]
             }));
-          
+
           structure.mapPoints = points;
         }
         else if (type === 'walkPoints' && feature.geometry.type === 'LineString') {
@@ -217,7 +221,7 @@ export function importData(jsonString: string): Structure[] {
             lat: coord[1],
             lng: coord[0]
           }));
-          
+
           structure.walkPoints = points;
         }
         else if (type === 'triggerBand' && feature.geometry.type === 'Polygon') {
@@ -228,7 +232,7 @@ export function importData(jsonString: string): Structure[] {
               lat: coord[1],
               lng: coord[0]
             }));
-          
+
           if (structure.triggerBand) {
             structure.triggerBand.points = points;
             if (thickness) {
@@ -237,12 +241,14 @@ export function importData(jsonString: string): Structure[] {
           }
         }
       });
-      
+
       // Convert map to array and ensure all properties are present
       return Array.from(structuresMap.values()).map(partial => {
         return {
           id: partial.id || crypto.randomUUID(),
+          code: partial.code || undefined,
           name: partial.name || 'Imported Structure',
+          description: partial.description || undefined,
           mapPoints: partial.mapPoints || [],
           walkPoints: partial.walkPoints || [],
           triggerBand: partial.triggerBand || {
@@ -253,17 +259,19 @@ export function importData(jsonString: string): Structure[] {
         };
       });
     }
-    
+
     // Check if it's a simple array of structures
     if (Array.isArray(parsed)) {
       console.log("Detected array format");
       // Validate that each item has the required structure properties
-      return parsed.filter(item => 
-        item && typeof item === 'object' && 
+      return parsed.filter(item =>
+        item && typeof item === 'object' &&
         (item.mapPoints || item.walkPoints)
       ).map(item => ({
         id: item.id || crypto.randomUUID(),
+        code: item.code || undefined,
         name: item.name || 'Imported Structure',
+        description: item.description || undefined,
         mapPoints: Array.isArray(item.mapPoints) ? item.mapPoints : [],
         walkPoints: Array.isArray(item.walkPoints) ? item.walkPoints : [],
         triggerBand: item.triggerBand || {
@@ -273,13 +281,15 @@ export function importData(jsonString: string): Structure[] {
         lastModified: item.lastModified || new Date().toISOString()
       }));
     }
-    
+
     // If we got here, try to extract a structure directly
     if (parsed && typeof parsed === 'object' && (parsed.mapPoints || parsed.walkPoints)) {
       console.log("Detected single structure format");
       return [{
         id: parsed.id || crypto.randomUUID(),
+        code: parsed.code || undefined,
         name: parsed.name || 'Imported Structure',
+        description: parsed.description || undefined,
         mapPoints: Array.isArray(parsed.mapPoints) ? parsed.mapPoints : [],
         walkPoints: Array.isArray(parsed.walkPoints) ? parsed.walkPoints : [],
         triggerBand: parsed.triggerBand || {
@@ -289,7 +299,7 @@ export function importData(jsonString: string): Structure[] {
         lastModified: parsed.lastModified || new Date().toISOString()
       }];
     }
-    
+
     throw new Error('Unsupported format');
   } catch (error) {
     console.error('Failed to import data:', error);
