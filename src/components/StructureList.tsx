@@ -1,69 +1,36 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useApp } from '@/hooks/useApp';
 import { formatDate } from '@/utils/formatters';
+import NewStructureForm from './NewStructureForm';
 
 interface StructureListProps {
   closeSidebar?: () => void;
 }
 
 export default function StructureList({ closeSidebar }: StructureListProps) {
-  const { 
-    structures, 
-    activeStructureId, 
+  const {
+    structures,
+    activeStructureId,
     setActiveStructureId,
-    addStructure,
     deleteStructure
   } = useApp();
-  
-  const [newStructureName, setNewStructureName] = useState('');
-  // Add this state to prevent hydration mismatch
+
   const [isClient, setIsClient] = useState(false);
-  
-  // Set isClient to true after first render
+
   useEffect(() => {
     setIsClient(true);
   }, []);
-  
-  const handleAddStructure = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newStructureName.trim()) {
-      addStructure(newStructureName.trim());
-      setNewStructureName('');
-    }
-  };
-  
+
   const handleSelectStructure = (id: string) => {
     setActiveStructureId(id);
-    if (closeSidebar) {
-      closeSidebar();
-    }
+    if (closeSidebar) closeSidebar();
   };
-  
+
   return (
     <div className="p-4">
-      {/* Add new structure form */}
-      <form onSubmit={handleAddStructure} className="mb-4">
-        <div className="flex space-x-2">
-          <input
-            type="text"
-            value={newStructureName}
-            onChange={(e) => setNewStructureName(e.target.value)}
-            placeholder="New structure name"
-            className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm"
-            required
-          />
-          <button
-            type="submit"
-            className="px-3 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
-          >
-            Add
-          </button>
-        </div>
-      </form>
-      
-      {/* Structure list - Only show when client-side rendering is active */}
+      <NewStructureForm />
       {isClient && (
         <div className="space-y-2">
           {structures.length === 0 ? (
@@ -72,7 +39,7 @@ export default function StructureList({ closeSidebar }: StructureListProps) {
             </div>
           ) : (
             structures.map(structure => (
-              <div 
+              <div
                 key={structure.id}
                 onClick={() => handleSelectStructure(structure.id)}
                 className={`p-3 rounded cursor-pointer transition-colors ${
@@ -113,8 +80,6 @@ export default function StructureList({ closeSidebar }: StructureListProps) {
           )}
         </div>
       )}
-      
-      {/* Show loading placeholder during server rendering */}
       {!isClient && (
         <div className="space-y-2 animate-pulse">
           <div className="p-4 bg-gray-100 rounded h-16"></div>
