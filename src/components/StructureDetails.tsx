@@ -75,48 +75,65 @@ export default function StructureDetails() {
     <div className="p-4">
       <div className="flex justify-between items-center mb-2">
         {isEditing ? (
-          <div className="flex flex-col space-y-2 w-full">
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-              autoFocus
-              placeholder="Structure Name"
-            />
-            <input
-              type="text"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-              placeholder="Unique Code/Identifier"
-            />
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value as StructureType)}
-              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-            >
-              {STRUCTURE_TYPES.map(structureType => (
-                <option key={structureType} value={structureType}>
-                  {capitalizeStructureType(structureType)}
-                </option>
-              ))}
-            </select>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-              placeholder="Description"
-              rows={2}
-            />
+          <form className="flex flex-col space-y-4 w-full" onSubmit={e => { e.preventDefault(); handleSaveDetails(); }}>
+            <div className="flex flex-col space-y-1">
+              <label htmlFor="structure-name" className="text-xs font-medium text-gray-700">Name</label>
+              <input
+                id="structure-name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                autoFocus
+                placeholder="Structure Name"
+              />
+            </div>
+            <div className="flex flex-col space-y-1">
+              <label htmlFor="structure-code" className="text-xs font-medium text-gray-700">Code</label>
+              <input
+                id="structure-code"
+                type="text"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                placeholder="Unique Code/Identifier"
+              />
+            </div>
+            <div className="flex flex-col space-y-1">
+              <label htmlFor="structure-type" className="text-xs font-medium text-gray-700">Type</label>
+              <select
+                id="structure-type"
+                value={type}
+                onChange={(e) => setType(e.target.value as StructureType)}
+                className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+              >
+                {STRUCTURE_TYPES.map(structureType => (
+                  <option key={structureType} value={structureType}>
+                    {capitalizeStructureType(structureType)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col space-y-1">
+              <label htmlFor="structure-description" className="text-xs font-medium text-gray-700">Description</label>
+              <textarea
+                id="structure-description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                placeholder="Description"
+                rows={2}
+              />
+            </div>
             <div className="flex space-x-2 mt-2">
               <button
-                onClick={handleSaveDetails}
+                type="submit"
                 className="px-2 py-1 bg-green-600 text-white rounded text-xs"
               >
                 Save
               </button>
               <button
+                type="button"
                 onClick={() => {
                   setName(activeStructure.name ?? '');
                   setDescription(activeStructure.description ?? '');
@@ -129,7 +146,7 @@ export default function StructureDetails() {
                 Cancel
               </button>
             </div>
-          </div>
+          </form>
         ) : (
           <div className="w-full">
             <div className="flex justify-between items-center">
