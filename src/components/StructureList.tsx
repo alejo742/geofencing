@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useApp } from '@/hooks/useApp';
 import { formatDate } from '@/utils/formatters';
+import { capitalizeStructureType } from '@/types';
 import NewStructureForm from './NewStructureForm';
 
 interface StructureListProps {
@@ -51,6 +52,9 @@ export default function StructureList({ closeSidebar }: StructureListProps) {
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="font-medium text-gray-900">{structure.name}</h3>
+                    <p className="text-xs text-gray-500">
+                      {capitalizeStructureType(structure.type)} • {structure.code}
+                    </p>
                     <p className="text-xs text-gray-500">
                       Last modified: {formatDate(structure.lastModified)}
                     </p>

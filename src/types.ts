@@ -16,11 +16,15 @@ interface TriggerBand {
   calculatedPoints?: Point[]; // Generated points for the actual band area
 }
 
+// Structure types enum - stored as lowercase
+type StructureType = 'academic' | 'residential' | 'dining' | 'wellness' | 'commercial' | 'outdoor' | 'administrative' | 'transportation';
+
 interface Structure {
   id: string;                 // UUID
-  code?: string;              // Unique code/identifier
+  code: string;               // Unique code/identifier (now required)
   name: string;               // Building name
-  description?: string;       // Description
+  description: string;        // Description (now required)
+  type: StructureType;        // Structure type (new required field)
   mapPoints: Point[];         // Manually clicked points
   walkPoints: Point[];        // GPS-collected points
   triggerBand: TriggerBand;
@@ -38,7 +42,8 @@ interface GeoJSONFeature {
     code?: string;            // Unique code/identifier (new)
     name?: string;
     description?: string;     // Description (new)
-    type?: string;
+    type?: string;            // Structure type (new)
+    boundaryType?: string;    // Boundary type (mapPoints, walkPoints, triggerBand)
     thickness?: number;
     lastModified?: string;
   };
@@ -85,10 +90,28 @@ interface StructureWithComputed extends Structure {
   area?: number;
 }
 
+// Utility functions for structure types
+const STRUCTURE_TYPES: StructureType[] = [
+  'academic',
+  'residential', 
+  'dining',
+  'wellness',
+  'commercial',
+  'outdoor',
+  'administrative',
+  'transportation'
+];
+
+function capitalizeStructureType(type?: StructureType): string {
+  if (!type) return '';
+  return type.charAt(0).toUpperCase() + type.slice(1);
+}
+
 export type {
   Point,
   TriggerBand,
   Structure,
+  StructureType,
   StoredData,
   GeoJSONFeature,
   GeoJSONCollection,
@@ -98,5 +121,7 @@ export type {
   MapMode,
   StructureWithComputed
 };
+
+export { STRUCTURE_TYPES, capitalizeStructureType };
 
 type BoundaryType = 'mapPoints' | 'walkPoints' | 'triggerBand';

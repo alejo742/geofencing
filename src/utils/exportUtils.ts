@@ -1,4 +1,4 @@
-import { Structure, Point } from '@/types';
+import { Structure, Point, StructureType } from '@/types';
 
 
 type BoundaryType = 'mapPoints' | 'walkPoints' | 'triggerBand';
@@ -84,10 +84,11 @@ export function structuresToGeoJSON(
       },
       properties: {
         structureId: structure.id,
-        code: structure.code ?? undefined,           // Export code
+        code: structure.code,           // Export code
         name: structure.name,
-        description: structure.description ?? undefined, // Export description
-        type: boundaryType,
+        description: structure.description, // Export description
+        type: structure.type,           // Export structure type
+        boundaryType: boundaryType,     // Export boundary type
         lastModified: structure.lastModified,
         ...extraProps
       }
@@ -180,7 +181,7 @@ export function importData(jsonString: string): Structure[] {
       const structuresMap = new Map<string, Partial<Structure>>();
 
       parsed.features.forEach((feature: GeoJSONFeature) => {
-        const { structureId, code, name, description, type, thickness } = feature.properties;
+        const { structureId, code, name, description, type, boundaryType, thickness } = feature.properties;
 
         const id = structureId || crypto.randomUUID();
 
@@ -188,9 +189,10 @@ export function importData(jsonString: string): Structure[] {
         if (!structuresMap.has(id)) {
           structuresMap.set(id, {
             id,
-            code: code || undefined,
+            code: code || '',
             name: name || 'Imported Structure',
-            description: description || undefined,
+            description: description || '',
+            type: (type as StructureType) || 'academic',
             mapPoints: [],
             walkPoints: [],
             triggerBand: {
@@ -203,8 +205,8 @@ export function importData(jsonString: string): Structure[] {
 
         const structure = structuresMap.get(id)!;
 
-        // Handle different feature types
-        if (type === 'mapPoints' && feature.geometry.type === 'Polygon') {
+        // Handle different boundary types
+        if (boundaryType === 'mapPoints' && feature.geometry.type === 'Polygon') {
           // Extract map points from the first ring of the polygon
           const points: Point[] = feature.geometry.coordinates[0]
             .slice(0, -1) // Remove the last point (closing point)
@@ -215,7 +217,7 @@ export function importData(jsonString: string): Structure[] {
 
           structure.mapPoints = points;
         }
-        else if (type === 'walkPoints' && feature.geometry.type === 'LineString') {
+        else if (boundaryType === 'walkPoints' && feature.geometry.type === 'LineString') {
           // Extract walk points from the line string
           const points: Point[] = feature.geometry.coordinates.map((coord: number[]) => ({
             lat: coord[1],
@@ -224,7 +226,7 @@ export function importData(jsonString: string): Structure[] {
 
           structure.walkPoints = points;
         }
-        else if (type === 'triggerBand' && feature.geometry.type === 'Polygon') {
+        else if (boundaryType === 'triggerBand' && feature.geometry.type === 'Polygon') {
           // Extract trigger band points from the first ring of the polygon
           const points: Point[] = feature.geometry.coordinates[0]
             .slice(0, -1) // Remove the last point (closing point)
@@ -246,9 +248,10 @@ export function importData(jsonString: string): Structure[] {
       return Array.from(structuresMap.values()).map(partial => {
         return {
           id: partial.id || crypto.randomUUID(),
-          code: partial.code || undefined,
+          code: partial.code || '',
           name: partial.name || 'Imported Structure',
-          description: partial.description || undefined,
+          description: partial.description || '',
+          type: partial.type || 'academic',
           mapPoints: partial.mapPoints || [],
           walkPoints: partial.walkPoints || [],
           triggerBand: partial.triggerBand || {
@@ -269,9 +272,10 @@ export function importData(jsonString: string): Structure[] {
         (item.mapPoints || item.walkPoints)
       ).map(item => ({
         id: item.id || crypto.randomUUID(),
-        code: item.code || undefined,
+        code: item.code || '',
         name: item.name || 'Imported Structure',
-        description: item.description || undefined,
+        description: item.description || '',
+        type: (item.type as StructureType) || 'academic',
         mapPoints: Array.isArray(item.mapPoints) ? item.mapPoints : [],
         walkPoints: Array.isArray(item.walkPoints) ? item.walkPoints : [],
         triggerBand: item.triggerBand || {
@@ -287,9 +291,10 @@ export function importData(jsonString: string): Structure[] {
       console.log("Detected single structure format");
       return [{
         id: parsed.id || crypto.randomUUID(),
-        code: parsed.code || undefined,
+        code: parsed.code || '',
         name: parsed.name || 'Imported Structure',
-        description: parsed.description || undefined,
+        description: parsed.description || '',
+        type: (parsed.type as StructureType) || 'academic',
         mapPoints: Array.isArray(parsed.mapPoints) ? parsed.mapPoints : [],
         walkPoints: Array.isArray(parsed.walkPoints) ? parsed.walkPoints : [],
         triggerBand: parsed.triggerBand || {

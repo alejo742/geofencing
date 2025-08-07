@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useState, useEffect, ReactNode } from 'react';
-import { Structure, Point, MapMode, MapViewState } from '@/types';
+import { Structure, Point, MapMode, MapViewState, StructureType } from '@/types';
 import { saveStructures, loadStructures } from '@/lib/storage';
 import { addMapPoint, movePoint, deletePoint } from '@/utils/mapUtils';
 import { updateTriggerThickness } from '@/utils/geoUtils';
@@ -19,7 +19,7 @@ type AppContextType = {
   activeStructureId: string | null;
   activeStructure: Structure | null;
   setActiveStructureId: (id: string | null) => void;
-  addStructure: (name: string, code: string) => Structure;
+  addStructure: (name: string, code: string, description: string, type: StructureType) => Structure;
   isCodeUnique: (code: string) => boolean;
   updateStructure: (structure: Structure) => void;
   refreshStructures: () => Structure[];
@@ -216,11 +216,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return !structures.some(s => s.code?.toLowerCase() === code.trim().toLowerCase());
   }
 
-  function addStructure(name: string, code: string) {
+  function addStructure(name: string, code: string, description: string, type: StructureType) {
     const newStructure: Structure = {
       id: crypto.randomUUID(),
       name,
       code,
+      description,
+      type,
       mapPoints: [],
       walkPoints: [],
       triggerBand: {
