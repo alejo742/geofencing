@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useState, useEffect, ReactNode } from 'react';
-import { Structure, Point, MapMode, MapViewState, StructureType } from '@/types';
+import { Structure, Point, MapMode, MapViewState, StructureType, StructureHierarchy, StructureRelationship, buildStructureHierarchy, getStructureRelationships, canSetParent } from '@/types';
 import { saveStructures, loadStructures } from '@/lib/storage';
 import { addMapPoint, movePoint, deletePoint } from '@/utils/mapUtils';
 import { updateTriggerThickness } from '@/utils/geoUtils';
@@ -16,14 +16,22 @@ const DEFAULT_MAP_STATE: MapViewState = {
 type AppContextType = {
   // Structure-related state
   structures: Structure[];
-  activeStructureId: string | null;
+  activeStructureCode: string | null;
   activeStructure: Structure | null;
-  setActiveStructureId: (id: string | null) => void;
-  addStructure: (name: string, code: string, description: string, type: StructureType) => Structure;
+  setActiveStructureCode: (code: string | null) => void;
+  addStructure: (name: string, code: string, description: string, type: StructureType, parentCode?: string) => Structure;
   isCodeUnique: (code: string) => boolean;
   updateStructure: (structure: Structure) => void;
   refreshStructures: () => Structure[];
-  deleteStructure: (id: string) => void;
+  deleteStructure: (code: string) => void;
+  
+  // Hierarchy-related functions
+  getStructureHierarchy: () => StructureHierarchy[];
+  getStructureRelationships: (structureCode: string) => StructureRelationship;
+  setStructureParent: (structureCode: string, parentCode: string | null) => void;
+  canSetAsParent: (childCode: string, parentCode: string) => boolean;
+  getRootStructures: () => Structure[];
+  getChildStructures: (parentCode: string) => Structure[];
   
   // Map-related state
   mapState: MapViewState;
@@ -65,7 +73,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   });
   
-  const [activeStructureId, setActiveStructureId] = useState<string | null>(() => {
+  const [activeStructureCode, setActiveStructureCode] = useState<string | null>(() => {
     try {
       if (typeof window !== 'undefined') {
         const stored = localStorage.getItem('evergreen_active_structure');
@@ -79,18 +87,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const [actionHistory, setActionHistory] = useState<Array<{
     type: string;
-    structureId: string;
+    structureCode: string;
     data: any;
   }>>([]);
   
   // Find the active structure
-  const activeStructure = structures.find(s => s.id === activeStructureId) || null;
+  const activeStructure = structures.find(s => s.code === activeStructureCode) || null;
   
   const undoLastAction = useCallback(() => {
     if (actionHistory.length === 0) return;
     
     const lastAction = actionHistory[actionHistory.length - 1];
-    const structure = structures.find(s => s.id === lastAction.structureId);
+    const structure = structures.find(s => s.code === lastAction.structureCode);
     
     if (!structure) return;
     
@@ -170,16 +178,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [structures]);
   
-  // Save active structure ID whenever it changes
+  // Save active structure code whenever it changes
   useEffect(() => {
     try {
       if (typeof window !== 'undefined') {
-        localStorage.setItem('evergreen_active_structure', JSON.stringify(activeStructureId));
+        localStorage.setItem('evergreen_active_structure', JSON.stringify(activeStructureCode));
       }
     } catch (error) {
-      console.error('Failed to save active structure ID:', error);
+      console.error('Failed to save active structure code:', error);
     }
-  }, [activeStructureId]);
+  }, [activeStructureCode]);
   
   // Save map state to localStorage whenever it changes
   useEffect(() => {
@@ -199,9 +207,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setStructures(refreshedStructures);
       
       if (typeof window !== 'undefined') {
-        const storedActiveId = localStorage.getItem('evergreen_active_structure');
-        if (storedActiveId) {
-          setActiveStructureId(JSON.parse(storedActiveId));
+        const storedActiveCode = localStorage.getItem('evergreen_active_structure');
+        if (storedActiveCode) {
+          setActiveStructureCode(JSON.parse(storedActiveCode));
         }
       }
       
@@ -216,13 +224,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return !structures.some(s => s.code?.toLowerCase() === code.trim().toLowerCase());
   }
 
-  function addStructure(name: string, code: string, description: string, type: StructureType) {
+  function addStructure(name: string, code: string, description: string, type: StructureType, parentCode?: string) {
+    // Ensure unique code
+    let uniqueCode = code.trim().toUpperCase();
+    const existingCodes = new Set(structures.map(s => s.code));
+    
+    let counter = 2;
+    while (existingCodes.has(uniqueCode)) {
+      uniqueCode = `${code.trim().toUpperCase()}${counter}`;
+      counter++;
+    }
+    
     const newStructure: Structure = {
-      id: crypto.randomUUID(),
+      code: uniqueCode,
       name,
-      code,
       description,
       type,
+      parentId: parentCode,
       mapPoints: [],
       walkPoints: [],
       triggerBand: {
@@ -233,7 +251,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   
     setStructures(prev => [...prev, newStructure]);
-    setActiveStructureId(newStructure.id);
+    setActiveStructureCode(newStructure.code);
   
     return newStructure;
   }
@@ -245,16 +263,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     
     setStructures(prev => 
-      prev.map(s => s.id === updated.id ? updated : s)
+      prev.map(s => s.code === updated.code ? updated : s)
     );
   }
   
-  function deleteStructure(id: string) {
-    setStructures(prev => prev.filter(s => s.id !== id));
+  function deleteStructure(code: string) {
+    // Get all descendant structures that need to be deleted
+    const relationships = getStructureRelationships(code, structures);
+    const allCodesToDelete = [code, ...relationships.descendants.map(d => d.code)];
     
-    // If we're deleting the active structure, clear the active ID
-    if (activeStructureId === id) {
-      setActiveStructureId(null);
+    setStructures(prev => prev.filter(s => !allCodesToDelete.includes(s.code)));
+    
+    // If we're deleting the active structure, clear the active code
+    if (allCodesToDelete.includes(activeStructureCode || '')) {
+      setActiveStructureCode(null);
     }
   }
   
@@ -269,7 +291,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Add to history
       setActionHistory(prev => [...prev, {
         type: 'ADD_MAP_POINT',
-        structureId: activeStructure.id,
+        structureCode: activeStructure.code,
         data: point
       }]);
     } else {
@@ -282,7 +304,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Add to history
       setActionHistory(prev => [...prev, {
         type: 'ADD_WALK_POINT',
-        structureId: activeStructure.id,
+        structureCode: activeStructure.code,
         data: point
       }]);
     }
@@ -337,7 +359,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Add to history
     setActionHistory(prev => [...prev, {
       type: 'ADD_TRIGGER_POINT',
-      structureId: activeStructure.id,
+      structureCode: activeStructure.code,
       data: point
     }]);
     
@@ -375,21 +397,69 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     // Select the first imported structure if available
     if (structuresToAdd.length > 0) {
-      setActiveStructureId(structuresToAdd[0].id);
+      setActiveStructureCode(structuresToAdd[0].code);
     }
+  }
+  
+  // Hierarchy management functions
+  function getStructureHierarchyValue(): StructureHierarchy[] {
+    return buildStructureHierarchy(structures);
+  }
+  
+  function getStructureRelationshipsValue(structureId: string): StructureRelationship {
+    return getStructureRelationships(structureId, structures);
+  }
+  
+  function setStructureParent(structureCode: string, parentCode: string | null) {
+    const structure = structures.find(s => s.code === structureCode);
+    if (!structure) return;
+    
+    // Validate the parent assignment
+    if (parentCode && !canSetParent(structureCode, parentCode, structures)) {
+      console.error('Cannot set parent: would create a circular dependency');
+      return;
+    }
+    
+    const updatedStructure = {
+      ...structure,
+      parentId: parentCode || undefined,
+      lastModified: new Date().toISOString()
+    };
+    
+    updateStructure(updatedStructure);
+  }
+  
+  function canSetAsParent(childId: string, parentId: string): boolean {
+    return canSetParent(childId, parentId, structures);
+  }
+  
+  function getRootStructures(): Structure[] {
+    return structures.filter(s => !s.parentId);
+  }
+  
+  function getChildStructures(parentCode: string): Structure[] {
+    return structures.filter(s => s.parentId === parentCode);
   }
   
   const value = {
     // Structure state
     structures,
-    activeStructureId,
+    activeStructureCode,
     activeStructure,
-    setActiveStructureId,
+    setActiveStructureCode,
     addStructure,
     isCodeUnique,
     updateStructure,
     refreshStructures,
     deleteStructure,
+    
+    // Hierarchy functions
+    getStructureHierarchy: getStructureHierarchyValue,
+    getStructureRelationships: getStructureRelationshipsValue,
+    setStructureParent,
+    canSetAsParent,
+    getRootStructures,
+    getChildStructures,
     
     // Map state
     mapState,

@@ -1,5 +1,53 @@
 import { Structure, Point, StructureType } from '@/types';
 
+// Utility function to generate unique codes when collisions occur
+function generateUniqueCode(baseCode: string, existingCodes: Set<string>): string {
+  if (!existingCodes.has(baseCode)) {
+    return baseCode;
+  }
+  
+  let counter = 2;
+  let newCode = `${baseCode}${counter}`;
+  
+  while (existingCodes.has(newCode)) {
+    counter++;
+    newCode = `${baseCode}${counter}`;
+  }
+  
+  return newCode;
+}
+
+// Utility function to extract structure data from any format, handling backwards compatibility
+function extractStructureFromData(data: any, existingCodes: Set<string>): Structure {
+  // Handle backwards compatibility - extract code from various possible sources
+  let code = data.code || data.structureId || data.id || 'UNKNOWN';
+  
+  // Ensure code is a string and clean it up
+  code = String(code).trim().toUpperCase();
+  if (!code || code === 'UNKNOWN') {
+    code = `STRUCT_${Date.now()}`;
+  }
+  
+  // Generate unique code if collision
+  const uniqueCode = generateUniqueCode(code, existingCodes);
+  existingCodes.add(uniqueCode);
+  
+  return {
+    code: uniqueCode,
+    name: data.name || 'Imported Structure',
+    description: data.description || '',
+    type: (data.type as StructureType) || 'academic',
+    parentId: data.parentId || undefined,
+    mapPoints: Array.isArray(data.mapPoints) ? data.mapPoints : [],
+    walkPoints: Array.isArray(data.walkPoints) ? data.walkPoints : [],
+    triggerBand: data.triggerBand || {
+      points: [],
+      thickness: 5
+    },
+    lastModified: data.lastModified || new Date().toISOString()
+  };
+}
+
 
 type BoundaryType = 'mapPoints' | 'walkPoints' | 'triggerBand';
 
@@ -83,11 +131,11 @@ export function structuresToGeoJSON(
         coordinates
       },
       properties: {
-        structureId: structure.id,
-        code: structure.code,           // Export code
+        code: structure.code,           // Primary identifier
         name: structure.name,
-        description: structure.description, // Export description
-        type: structure.type,           // Export structure type
+        description: structure.description,
+        type: structure.type,
+        parentId: structure.parentId,   // Export parent relationship
         boundaryType: boundaryType,     // Export boundary type
         lastModified: structure.lastModified,
         ...extraProps
@@ -106,11 +154,11 @@ export function structuresToGeoJSON(
  */
 export function structuresToCustomFormat(structures: Structure[]): CustomFormat {
   return {
-    version: '1.1',
+    version: '2.0', // Updated version to reflect hierarchy support
     structures,
     metadata: {
       exportedAt: new Date().toISOString(),
-      appVersion: '1.0.0'
+      appVersion: '2.0.0'
     }
   };
 }
@@ -154,7 +202,7 @@ export function exportData(
 }
 
 /**
- * Import data from JSON string
+ * Import data from JSON string with full backwards compatibility
  */
 export function importData(jsonString: string): Structure[] {
   try {
@@ -162,52 +210,52 @@ export function importData(jsonString: string): Structure[] {
     const parsed = JSON.parse(jsonString);
     console.log("Parsed JSON:", parsed);
 
+    const existingCodes = new Set<string>();
+
     // Check if it's our custom format
     if (parsed.version && Array.isArray(parsed.structures)) {
       console.log("Detected custom format");
-      return parsed.structures;
+      return parsed.structures.map((data: any) => extractStructureFromData(data, existingCodes));
     }
 
     // Check if it's our metadata wrapper
     if (parsed.metadata && Array.isArray(parsed.customFormat?.structures)) {
       console.log("Detected metadata wrapper format");
-      return parsed.customFormat.structures;
+      return parsed.customFormat.structures.map((data: any) => extractStructureFromData(data, existingCodes));
     }
 
     // Check if it's GeoJSON
     if (parsed.type === 'FeatureCollection' && Array.isArray(parsed.features)) {
       console.log("Detected GeoJSON format");
-      // Group features by structureId
+      // Group features by code (or fallback identifiers)
       const structuresMap = new Map<string, Partial<Structure>>();
 
       parsed.features.forEach((feature: GeoJSONFeature) => {
-        const { structureId, code, name, description, type, boundaryType, thickness } = feature.properties;
-
-        const id = structureId || crypto.randomUUID();
+        const props = feature.properties;
+        const code = props.code || props.structureId || props.id || `STRUCT_${Date.now()}`;
 
         // Initialize structure if it doesn't exist
-        if (!structuresMap.has(id)) {
-          structuresMap.set(id, {
-            id,
-            code: code || '',
-            name: name || 'Imported Structure',
-            description: description || '',
-            type: (type as StructureType) || 'academic',
+        if (!structuresMap.has(code)) {
+          structuresMap.set(code, {
+            code,
+            name: props.name || 'Imported Structure',
+            description: props.description || '',
+            type: (props.type as StructureType) || 'academic',
+            parentId: props.parentId || undefined,
             mapPoints: [],
             walkPoints: [],
             triggerBand: {
               points: [],
               thickness: 5
             },
-            lastModified: new Date().toISOString()
+            lastModified: props.lastModified || new Date().toISOString()
           });
         }
 
-        const structure = structuresMap.get(id)!;
+        const structure = structuresMap.get(code)!;
 
         // Handle different boundary types
-        if (boundaryType === 'mapPoints' && feature.geometry.type === 'Polygon') {
-          // Extract map points from the first ring of the polygon
+        if (props.boundaryType === 'mapPoints' && feature.geometry.type === 'Polygon') {
           const points: Point[] = feature.geometry.coordinates[0]
             .slice(0, -1) // Remove the last point (closing point)
             .map((coord: number[]) => ({
@@ -217,8 +265,7 @@ export function importData(jsonString: string): Structure[] {
 
           structure.mapPoints = points;
         }
-        else if (boundaryType === 'walkPoints' && feature.geometry.type === 'LineString') {
-          // Extract walk points from the line string
+        else if (props.boundaryType === 'walkPoints' && feature.geometry.type === 'LineString') {
           const points: Point[] = feature.geometry.coordinates.map((coord: number[]) => ({
             lat: coord[1],
             lng: coord[0]
@@ -226,8 +273,7 @@ export function importData(jsonString: string): Structure[] {
 
           structure.walkPoints = points;
         }
-        else if (boundaryType === 'triggerBand' && feature.geometry.type === 'Polygon') {
-          // Extract trigger band points from the first ring of the polygon
+        else if (props.boundaryType === 'triggerBand' && feature.geometry.type === 'Polygon') {
           const points: Point[] = feature.geometry.coordinates[0]
             .slice(0, -1) // Remove the last point (closing point)
             .map((coord: number[]) => ({
@@ -237,72 +283,31 @@ export function importData(jsonString: string): Structure[] {
 
           if (structure.triggerBand) {
             structure.triggerBand.points = points;
-            if (thickness) {
-              structure.triggerBand.thickness = thickness;
+            if (props.thickness) {
+              structure.triggerBand.thickness = props.thickness;
             }
           }
         }
       });
 
       // Convert map to array and ensure all properties are present
-      return Array.from(structuresMap.values()).map(partial => {
-        return {
-          id: partial.id || crypto.randomUUID(),
-          code: partial.code || '',
-          name: partial.name || 'Imported Structure',
-          description: partial.description || '',
-          type: partial.type || 'academic',
-          mapPoints: partial.mapPoints || [],
-          walkPoints: partial.walkPoints || [],
-          triggerBand: partial.triggerBand || {
-            points: [],
-            thickness: 5
-          },
-          lastModified: partial.lastModified || new Date().toISOString()
-        };
-      });
+      return Array.from(structuresMap.values()).map(partial => 
+        extractStructureFromData(partial, existingCodes)
+      );
     }
 
     // Check if it's a simple array of structures
     if (Array.isArray(parsed)) {
       console.log("Detected array format");
-      // Validate that each item has the required structure properties
-      return parsed.filter(item =>
-        item && typeof item === 'object' &&
-        (item.mapPoints || item.walkPoints)
-      ).map(item => ({
-        id: item.id || crypto.randomUUID(),
-        code: item.code || '',
-        name: item.name || 'Imported Structure',
-        description: item.description || '',
-        type: (item.type as StructureType) || 'academic',
-        mapPoints: Array.isArray(item.mapPoints) ? item.mapPoints : [],
-        walkPoints: Array.isArray(item.walkPoints) ? item.walkPoints : [],
-        triggerBand: item.triggerBand || {
-          points: [],
-          thickness: 5
-        },
-        lastModified: item.lastModified || new Date().toISOString()
-      }));
+      return parsed
+        .filter(item => item && typeof item === 'object' && (item.mapPoints || item.walkPoints))
+        .map(data => extractStructureFromData(data, existingCodes));
     }
 
     // If we got here, try to extract a structure directly
     if (parsed && typeof parsed === 'object' && (parsed.mapPoints || parsed.walkPoints)) {
       console.log("Detected single structure format");
-      return [{
-        id: parsed.id || crypto.randomUUID(),
-        code: parsed.code || '',
-        name: parsed.name || 'Imported Structure',
-        description: parsed.description || '',
-        type: (parsed.type as StructureType) || 'academic',
-        mapPoints: Array.isArray(parsed.mapPoints) ? parsed.mapPoints : [],
-        walkPoints: Array.isArray(parsed.walkPoints) ? parsed.walkPoints : [],
-        triggerBand: parsed.triggerBand || {
-          points: [],
-          thickness: 5
-        },
-        lastModified: parsed.lastModified || new Date().toISOString()
-      }];
+      return [extractStructureFromData(parsed, existingCodes)];
     }
 
     throw new Error('Unsupported format');

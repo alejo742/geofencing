@@ -5,8 +5,8 @@ import { AppProvider } from '@/context/AppContext';
 import DynamicMap from '@/components/map/DynamicMapView';
 import StructureList from '@/components/StructureList';
 import StructureDetails from '@/components/StructureDetails';
+import HierarchyManager from '@/components/HierarchyManager';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import { TestingData } from '@/components/simulation/TestingMode';
 
 export default function Home() {
   // Track if window is mobile size
@@ -15,12 +15,8 @@ export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // Add client-side rendering flag
   const [isClient, setIsClient] = useState(false);
-  // Testing mode state
-  const [testingData, setTestingData] = useState<TestingData>({
-    isActive: false,
-    boundaryType: 'trigger',
-    map: null
-  });
+  // Hierarchy manager state
+  const [hierarchyManagerOpen, setHierarchyManagerOpen] = useState(false);
 
   // Handle resize to check if mobile and set client-side flag
   useEffect(() => {
@@ -50,15 +46,24 @@ export default function Home() {
           <header className="bg-green-700 text-white p-4 shadow-md z-10 flex-shrink-0">
             <div className="flex justify-between items-center">
               <h1 className="text-xl font-bold">Evergreen Geofencing Tool</h1>
-              {/* Mobile toggle button - only shown on client */}
-              {isClient && isMobile && (
+              <div className="flex items-center space-x-4">
+                {/* Hierarchy Manager Button */}
                 <button
-                  onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className="p-2 rounded bg-green-800 hover:bg-green-900"
+                  onClick={() => setHierarchyManagerOpen(true)}
+                  className="px-3 py-1 bg-green-800 hover:bg-green-900 rounded text-sm"
                 >
-                  {sidebarOpen ? 'Close Sidebar' : 'Open Sidebar'}
+                  Hierarchy
                 </button>
-              )}
+                {/* Mobile toggle button - only shown on client */}
+                {isClient && isMobile && (
+                  <button
+                    onClick={() => setSidebarOpen(!sidebarOpen)}
+                    className="p-2 rounded bg-green-800 hover:bg-green-900"
+                  >
+                    {sidebarOpen ? 'Close Sidebar' : 'Open Sidebar'}
+                  </button>
+                )}
+              </div>
             </div>
           </header>
           
@@ -66,40 +71,10 @@ export default function Home() {
           <div className="flex flex-1 overflow-hidden h-[calc(100vh-4rem)]"> {/* Subtract header height */}
             {/* Sidebar - conditionally shown on mobile */}
             <aside 
-              className={`bg-white border-r border-gray-200 w-80 flex-shrink-0 flex flex-col overflow-hidden
+              className={`bg-white border-r border-gray-200 w-96 flex-shrink-0 flex flex-col overflow-hidden
                         ${isClient && isMobile ? 'absolute top-16 bottom-0 z-25 shadow-lg transition-transform duration-300 ease-in-out ' + 
                                      (sidebarOpen ? 'translate-x-0' : '-translate-x-full') : ''}`}
             >
-              <div className='flex-col gap-2'>
-                <div className='py-4 flex justify-center items-center gap-2'>
-                  <input type="checkbox" name="toggle-testing" id="toggle-testing" onChange={() => {
-                    setTestingData(prev => ({
-                      ...prev,
-                      isActive: !prev.isActive
-                    }));
-                  }} className='toggle-testing w-6 h-6 cursor-pointer accent-green-500' />
-                  <label className='text-md' htmlFor='toggle-testing'>Turn on Testing Mode? (beta)</label>
-                </div>
-                {/* Select which boundary we should use */}
-                <div className='pb-2 flex justify-center items-center gap-2'>
-                  <select 
-                    name="boundary-type" 
-                    id="boundary-type" 
-                    className='border border-gray-300 rounded p-2'
-                    defaultValue={"trigger"}
-                    onChange={(e) => {
-                      setTestingData(prev => ({
-                        ...prev,
-                        boundaryType: e.target.value as 'map' | 'walk' | 'trigger'
-                      }));
-                    }}
-                  >
-                    <option value="map">Map Boundary</option>
-                    <option value="walk">Walk Boundary</option>
-                    <option value="trigger">Trigger Boundary</option>
-                  </select>
-                </div>
-              </div>
               <div className="p-4 border-b border-gray-200 flex-shrink-0">
                 <h2 className="text-lg font-semibold text-gray-800">Structures</h2>
               </div>
@@ -114,9 +89,15 @@ export default function Home() {
             </aside>
             
             <div className="flex-1 relative h-full">
-              <DynamicMap testingData={testingData} />
+              <DynamicMap />
             </div>
           </div>
+          
+          {/* Hierarchy Manager Modal */}
+          <HierarchyManager 
+            isOpen={hierarchyManagerOpen}
+            onClose={() => setHierarchyManagerOpen(false)}
+          />
         </main>
       </AppProvider>
     </ErrorBoundary>

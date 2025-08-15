@@ -16,9 +16,9 @@ interface StructureLayerProps {
 export default function StructureLayer({ map }: StructureLayerProps) {
   const { 
     structures, 
-    activeStructureId, 
+    activeStructureCode, 
     activeStructure,
-    setActiveStructureId,
+    setActiveStructureCode,
     mapMode,
     addPointToStructure,
     movePointInStructure,
@@ -127,7 +127,7 @@ export default function StructureLayer({ map }: StructureLayerProps) {
     
     // Add each structure to the map
     structures.forEach(structure => {
-      const isActive = structure.id === activeStructureId;
+      const isActive = structure.code === activeStructureCode;
       
       // Render map polygons
       if (structure.mapPoints.length >= 3) {
@@ -149,7 +149,7 @@ export default function StructureLayer({ map }: StructureLayerProps) {
         // Don't add click handlers in edit mode
         if (mapMode !== 'editPoints' && mapMode !== 'triggerBand') {
           polygon.on('click', () => {
-            setActiveStructureId(structure.id);
+            setActiveStructureCode(structure.code);
           });
         }
         
@@ -247,7 +247,7 @@ export default function StructureLayer({ map }: StructureLayerProps) {
           
           if (mapMode !== 'editPoints' && mapMode !== 'triggerBand') {
             marker.on('click', () => {
-              setActiveStructureId(structure.id);
+              setActiveStructureCode(structure.code);
             });
           }
           
@@ -279,7 +279,7 @@ export default function StructureLayer({ map }: StructureLayerProps) {
         
         if (mapMode !== 'editPoints' && mapMode !== 'triggerBand') {
           polygon.on('click', () => {
-            setActiveStructureId(structure.id);
+            setActiveStructureCode(structure.code);
           });
         }
         
@@ -469,10 +469,10 @@ export default function StructureLayer({ map }: StructureLayerProps) {
   }, [
     map, 
     structures, 
-    activeStructureId, 
+    activeStructureCode, 
     activeStructure, 
     mapMode, 
-    setActiveStructureId, 
+    setActiveStructureCode, 
     movePointInStructure, 
     deletePointFromStructure,
     updateStructure
@@ -516,7 +516,7 @@ export default function StructureLayer({ map }: StructureLayerProps) {
         updateStructure(updatedStructure);
       }
     }
-  }, [activeStructure?.mapPoints, activeStructure?.walkPoints, activeStructure?.id, mapMode]);
+  }, [activeStructure?.mapPoints, activeStructure?.walkPoints, activeStructure?.code, mapMode]);
 
   // Handle layer visibility changes
   useEffect(() => {

@@ -5,14 +5,24 @@ import { formatDate, formatArea } from '@/utils/formatters';
 import { calculateAreaInSquareMeters } from '@/utils/mapUtils';
 import { useState, useEffect } from 'react';
 import { STRUCTURE_TYPES, capitalizeStructureType, StructureType } from '@/types';
+import SearchableSelect from './ui/SearchableSelect';
 
 export default function StructureDetails() {
-  const { activeStructure, updateStructure } = useApp();
+  const { 
+    activeStructure, 
+    updateStructure, 
+    structures,
+    getStructureRelationships,
+    setStructureParent,
+    canSetAsParent,
+    setActiveStructureCode
+  } = useApp();
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [code, setCode] = useState('');
   const [type, setType] = useState<StructureType>('academic');
+  const [parentId, setParentId] = useState<string>('');
   const [isClient, setIsClient] = useState(false);
 
   // Set client-side flag after mount
@@ -27,6 +37,7 @@ export default function StructureDetails() {
       setDescription(activeStructure.description ?? '');
       setCode(activeStructure.code ?? '');
       setType(activeStructure.type ?? 'academic');
+      setParentId(activeStructure.parentId ?? '');
     }
     setIsEditing(false);
   }, [activeStructure]);
@@ -60,15 +71,35 @@ export default function StructureDetails() {
 
   const handleSaveDetails = () => {
     if (name.trim() && code.trim() && description.trim() && type && activeStructure) {
+      // Update the structure properties
       updateStructure({
         ...activeStructure,
         name: name.trim(),
         description: description.trim(),
         code: code.trim(),
-        type: type
+        type: type,
+        parentId: parentId || undefined
       });
+      
+      // Set the parent relationship if it changed
+      if ((parentId || null) !== (activeStructure.parentId || null)) {
+        setStructureParent(activeStructure.code, parentId || null);
+      }
+      
       setIsEditing(false);
     }
+  };
+
+  // Get relationships for the active structure
+  const relationships = activeStructure ? getStructureRelationships(activeStructure.code) : null;
+
+  // Get available parent options (exclude self, children, and descendants)
+  const getAvailableParents = () => {
+    if (!activeStructure) return [];
+    return structures.filter(s => 
+      s.code !== activeStructure.code && // Not self
+      canSetAsParent(activeStructure.code, s.code) // No circular dependency
+    );
   };
 
   return (
@@ -115,6 +146,20 @@ export default function StructureDetails() {
               </select>
             </div>
             <div className="flex flex-col space-y-1">
+              <label htmlFor="structure-parent" className="text-xs font-medium text-gray-700">Parent Structure</label>
+              <SearchableSelect
+                structures={getAvailableParents()}
+                value={parentId}
+                onChange={(newParentId) => {
+                  console.log('StructureDetails: parentId changing from', parentId, 'to', newParentId);
+                  setParentId(newParentId);
+                }}
+                placeholder="Search parent structures..."
+                excludeCode={activeStructure?.code}
+                maxDisplayItems={5}
+              />
+            </div>
+            <div className="flex flex-col space-y-1">
               <label htmlFor="structure-description" className="text-xs font-medium text-gray-700">Description</label>
               <textarea
                 id="structure-description"
@@ -139,6 +184,7 @@ export default function StructureDetails() {
                   setDescription(activeStructure.description ?? '');
                   setCode(activeStructure.code ?? '');
                   setType(activeStructure.type ?? 'academic');
+                  setParentId(activeStructure.parentId ?? '');
                   setIsEditing(false);
                 }}
                 className="px-2 py-1 bg-gray-300 text-gray-700 rounded text-xs"
@@ -167,6 +213,59 @@ export default function StructureDetails() {
             <div className="mt-1 text-xs text-gray-500">
               <span className="font-semibold text-gray-700">Description:</span> {activeStructure.description || <span className="italic text-gray-400">No description</span>}
             </div>
+            
+            {/* Parent-Child Relationship Info */}
+            {relationships && (
+              <div className="mt-2 space-y-1">
+                {relationships.parent && (
+                  <div className="text-xs text-gray-500">
+                    <span className="font-semibold text-gray-700">Parent:</span>{' '}
+                    <button
+                      onClick={() => setActiveStructureCode(relationships.parent!.code)}
+                      className="text-blue-600 hover:text-blue-800 underline"
+                    >
+                      {relationships.parent.name} ({relationships.parent.code})
+                    </button>
+                  </div>
+                )}
+                
+                {relationships.children.length > 0 && (
+                  <div className="text-xs text-gray-500">
+                    <span className="font-semibold text-gray-700">Children ({relationships.children.length}):</span>
+                    <div className="ml-2 mt-1">
+                      {relationships.children.map(child => (
+                        <div key={child.code}>
+                          <button
+                            onClick={() => setActiveStructureCode(child.code)}
+                            className="text-blue-600 hover:text-blue-800 underline"
+                          >
+                            {child.name} ({child.code})
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {relationships.siblings.length > 0 && (
+                  <div className="text-xs text-gray-500">
+                    <span className="font-semibold text-gray-700">Siblings ({relationships.siblings.length}):</span>
+                    <div className="ml-2 mt-1">
+                      {relationships.siblings.map(sibling => (
+                        <div key={sibling.code}>
+                          <button
+                            onClick={() => setActiveStructureCode(sibling.code)}
+                            className="text-blue-600 hover:text-blue-800 underline"
+                          >
+                            {sibling.name} ({sibling.code})
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

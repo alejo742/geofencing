@@ -3,15 +3,17 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '@/hooks/useApp';
 import { STRUCTURE_TYPES, capitalizeStructureType, StructureType } from '@/types';
+import SearchableSelect from './ui/SearchableSelect';
 
 export default function NewStructureForm() {
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [description, setDescription] = useState('');
   const [type, setType] = useState<StructureType>('academic');
+  const [parentId, setParentId] = useState<string>('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { addStructure, isCodeUnique } = useApp();
+  const { addStructure, isCodeUnique, structures } = useApp();
 
   // Add client-side only rendering
   const [isClient, setIsClient] = useState(false);
@@ -47,11 +49,12 @@ export default function NewStructureForm() {
       return;
     }
     
-    addStructure(name.trim(), code.trim(), description.trim(), type);
+    addStructure(name.trim(), code.trim(), description.trim(), type, parentId || undefined);
     setName('');
     setCode('');
     setDescription('');
     setType('academic');
+    setParentId('');
     setIsFormOpen(false);
   };
 
@@ -118,6 +121,18 @@ export default function NewStructureForm() {
             </select>
           </label>
           <label className="block mb-2 text-sm font-medium">
+            Parent Structure (Optional):
+            <div className="mt-1">
+              <SearchableSelect
+                structures={structures}
+                value={parentId}
+                onChange={setParentId}
+                placeholder="Search parent structures..."
+                maxDisplayItems={5}
+              />
+            </div>
+          </label>
+          <label className="block mb-2 text-sm font-medium">
             Description: <span className="text-red-500">*</span>
             <textarea
               value={description}
@@ -145,6 +160,7 @@ export default function NewStructureForm() {
                 setCode(''); 
                 setDescription(''); 
                 setType('academic');
+                setParentId('');
               }}
               className="bg-gray-300 hover:bg-gray-400 py-1 px-3 rounded text-sm"
             >

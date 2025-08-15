@@ -32,9 +32,27 @@ For best results, use this tool on a mobile device with GPS capabilities. The ap
 
 1. Click the "New Structure" button in the sidebar
 2. Enter the name of the building or area (e.g., "Baker Library")
-3. Click "Create" to start defining the structure
+3. Enter a unique code/identifier (e.g., "BAKER")
+4. Select the structure type (academic, residential, dining, etc.)
+5. Optionally select a parent structure to create a hierarchy
+6. Click "Create" to start defining the structure
 
-### 2. Drawing Boundaries
+### 2. Managing Structure Hierarchy
+
+The app now supports parent-child relationships between structures:
+
+#### Creating Hierarchical Structures
+- When creating a new structure, you can select an existing structure as its parent
+- This creates a hierarchy (e.g., "Baker Library" → "Reading Room" → "Study Carrel 1")
+- Useful for complex buildings with multiple zones or nested areas
+
+#### Using the Hierarchy Manager
+- Click the "Hierarchy" button in the header to open the hierarchy manager
+- View the complete structure tree with indentation showing relationships
+- Edit parent-child relationships by selecting a structure and choosing a new parent
+- The system prevents circular dependencies (a structure cannot be its own ancestor)
+
+### 3. Drawing Boundaries
 
 The app allows you to define boundaries in two ways simultaneously:
 
@@ -51,7 +69,7 @@ The app allows you to define boundaries in two ways simultaneously:
 - Repeat for each corner of the building
 - The app shows your current GPS accuracy
 
-### 3. Adjusting the Trigger Band
+### 4. Adjusting the Trigger Band
 
 Once you have both map-drawn and GPS-walked points:
 
@@ -59,7 +77,7 @@ Once you have both map-drawn and GPS-walked points:
 2. Use the thickness slider to adjust how wide this band should be
 3. The trigger band represents the area where location-based events will fire
 
-### 4. Saving and Exporting
+### 5. Saving and Exporting
 
 - All work is automatically saved to your browser's local storage
 - Click "Export" to download the complete geofence data as a JSON file
@@ -98,12 +116,16 @@ The `customFormat` portion contains our application-specific data structure that
 - The trigger band with its thickness value
 - Additional metadata about each structure
 
-Example structure in custom format:
+Example structure in custom format (v2.0 with hierarchy support):
 
 ```json
 {
   "id": "b4d8e-f7c2-...",
   "name": "Baker Library",
+  "code": "BAKER",
+  "description": "Main campus library with study spaces",
+  "type": "academic",
+  "parentId": null,
   "mapPoints": [
     {"lat": 43.7056, "lng": -72.2943},
     {"lat": 43.7057, "lng": -72.2939},
@@ -121,6 +143,13 @@ Example structure in custom format:
   "lastModified": "2025-07-09T16:30:22Z"
 }
 ```
+
+### Hierarchy in Exported Data
+
+The exported data now includes parent-child relationships:
+- `parentId`: References the parent structure's ID (null for root structures)
+- GeoJSON features include `parentId` in properties
+- Custom format preserves the complete hierarchy structure
 
 ## Using the Data in Your Applications
 
