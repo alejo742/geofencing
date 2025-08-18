@@ -17,7 +17,7 @@ interface TriggerBand {
 }
 
 // Structure types enum - stored as lowercase
-type StructureType = 'academic' | 'residential' | 'dining' | 'wellness' | 'commercial' | 'outdoor' | 'administrative' | 'transportation';
+type StructureType = 'academic' | 'residential' | 'dining' | 'wellness' | 'commercial' | 'outdoor' | 'administrative' | 'transportation' | 'social';
 
 interface Structure {
   code: string;               // Unique code/identifier (primary key)
@@ -114,7 +114,8 @@ const STRUCTURE_TYPES: StructureType[] = [
   'commercial',
   'outdoor',
   'administrative',
-  'transportation'
+  'transportation',
+  'social'
 ];
 
 function capitalizeStructureType(type?: StructureType): string {
