@@ -4,7 +4,8 @@ import { useApp } from '@/hooks/useApp';
 import { formatDate, formatArea } from '@/utils/formatters';
 import { calculateAreaInSquareMeters } from '@/utils/mapUtils';
 import { useState, useEffect } from 'react';
-import { STRUCTURE_TYPES, capitalizeStructureType, StructureType } from '@/types';
+import { STRUCTURE_TYPES, StructureType } from '@/types';
+import { capitalizeStructureType } from '@/utils/structUtils';
 import SearchableSelect from './ui/SearchableSelect';
 
 export default function StructureDetails() {

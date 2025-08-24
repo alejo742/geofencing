@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useApp } from '@/hooks/useApp';
 import { formatDate } from '@/utils/formatters';
-import { capitalizeStructureType } from '@/types';
+import { capitalizeStructureType } from '@/utils/structUtils';
 import NewStructureForm from './NewStructureForm';
 
 interface StructureListProps {

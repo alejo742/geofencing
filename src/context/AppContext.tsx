@@ -1,7 +1,8 @@
 'use client';
 
 import { createContext, useCallback, useState, useEffect, ReactNode } from 'react';
-import { Structure, Point, MapMode, MapViewState, StructureType, StructureHierarchy, StructureRelationship, buildStructureHierarchy, getStructureRelationships, canSetParent } from '@/types';
+import { Structure, Point, MapMode, MapViewState, StructureType, StructureHierarchy, StructureRelationship } from '@/types';
+import { buildStructureHierarchy, getStructureRelationships, canSetParent } from '@/utils/structUtils';
 import { saveStructures, loadStructures } from '@/lib/storage';
 import { addMapPoint, movePoint, deletePoint } from '@/utils/mapUtils';
 import { updateTriggerThickness } from '@/utils/geoUtils';

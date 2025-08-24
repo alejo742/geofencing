@@ -6,6 +6,7 @@ import DynamicMap from '@/components/map/DynamicMapView';
 import StructureList from '@/components/StructureList';
 import StructureDetails from '@/components/StructureDetails';
 import HierarchyManager from '@/components/HierarchyManager';
+import Navigation from '@/components/Navigation';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
 export default function Home() {
@@ -43,29 +44,12 @@ export default function Home() {
       <AppProvider>
         <main className="flex flex-col h-screen w-screen overflow-hidden">
           {/* Header */}
-          <header className="bg-green-700 text-white p-4 shadow-md z-10 flex-shrink-0">
-            <div className="flex justify-between items-center">
-              <h1 className="text-xl font-bold">Evergreen Geofencing Tool</h1>
-              <div className="flex items-center space-x-4">
-                {/* Hierarchy Manager Button */}
-                <button
-                  onClick={() => setHierarchyManagerOpen(true)}
-                  className="px-3 py-1 bg-green-800 hover:bg-green-900 rounded text-sm"
-                >
-                  Hierarchy
-                </button>
-                {/* Mobile toggle button - only shown on client */}
-                {isClient && isMobile && (
-                  <button
-                    onClick={() => setSidebarOpen(!sidebarOpen)}
-                    className="p-2 rounded bg-green-800 hover:bg-green-900"
-                  >
-                    {sidebarOpen ? 'Close Sidebar' : 'Open Sidebar'}
-                  </button>
-                )}
-              </div>
-            </div>
-          </header>
+          <Navigation 
+            onHierarchyClick={() => setHierarchyManagerOpen(true)}
+            onMobileToggle={() => setSidebarOpen(!sidebarOpen)}
+            isMobile={isMobile}
+            sidebarOpen={sidebarOpen}
+          />
           
           {/* Main content - adjusted to take full height */}
           <div className="flex flex-1 overflow-hidden h-[calc(100vh-4rem)]"> {/* Subtract header height */}

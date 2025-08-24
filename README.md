@@ -1,6 +1,6 @@
 # Evergreen Geofencing Tool
 
-A simple web application for defining, refining, and exporting geofence boundaries for Dartmouth campus locations. This tool allows users to combine map-drawn boundaries with real-world GPS walking points to create more accurate geofences.
+A comprehensive web application for defining geofence boundaries and managing location-based triggers for Dartmouth campus structures. This tool allows users to create accurate geofences by combining map-drawn boundaries with real-world GPS walking points, and then configure automated triggers for entry/exit events.
 
 ## Getting Started
 
@@ -26,7 +26,16 @@ For best results, use this tool on a mobile device with GPS capabilities. The ap
 - Chrome/Safari on iOS
 - Chrome on Android
 
-## Using the Geofencing Tool
+## Application Overview
+
+The Evergreen Geofencing Tool consists of two main sections:
+
+1. **Geofencing** - Define and refine structure boundaries
+2. **Triggers** - Configure location-based notifications and flows
+
+Use the navigation bar to switch between these sections.
+
+## Part 1: Creating Geofences
 
 ### 1. Creating a New Structure
 
@@ -39,7 +48,7 @@ For best results, use this tool on a mobile device with GPS capabilities. The ap
 
 ### 2. Managing Structure Hierarchy
 
-The app now supports parent-child relationships between structures:
+The app supports parent-child relationships between structures:
 
 #### Creating Hierarchical Structures
 - When creating a new structure, you can select an existing structure as its parent
@@ -77,154 +86,240 @@ Once you have both map-drawn and GPS-walked points:
 2. Use the thickness slider to adjust how wide this band should be
 3. The trigger band represents the area where location-based events will fire
 
-### 5. Saving and Exporting
+## Part 2: Managing Triggers
 
-- All work is automatically saved to your browser's local storage
-- Click "Export" to download the complete geofence data as a JSON file
-- You can also import previously exported JSON files
+### Accessing Triggers Management
+
+Click "Triggers" in the navigation bar to access the triggers management system.
+
+### 1. Creating a New Trigger
+
+1. Click "Create Trigger" on the triggers page
+2. **Select a Structure**: Search and select the campus structure for your trigger
+3. **Choose Trigger Type**:
+   - **On Enter**: Fires when user enters the structure boundary
+   - **On Exit**: Fires when user leaves the structure boundary
+4. **Configure Notification**:
+   - **Title**: Main notification text (3-50 characters)
+   - **Body**: Additional notification details (3-100 characters)
+5. **Set Flow ID**: Dialogflow CX flow identifier that will be triggered
+6. Click "Create Trigger" to save
+
+### 2. Trigger Validation and Rules
+
+- **Duplicate Prevention**: Each structure can have only one "enter" trigger and one "exit" trigger
+- **Real-time Validation**: The form prevents creating duplicate triggers and shows which trigger types already exist
+- **Character Limits**: Enforced to ensure notifications display properly on mobile devices
+- **Flow ID Format**: Must be alphanumeric with underscores and hyphens only
+
+### 3. Managing Existing Triggers
+
+#### Trigger List Features
+- **Search**: Filter triggers by title, structure name, or flow ID
+- **Statistics**: View quick stats including total triggers, active triggers, and structures with triggers
+- **Status Toggle**: Activate/deactivate triggers without deleting them
+- **Bulk Actions**: Export/import trigger configurations
+
+#### Editing Triggers
+- Click "Edit" on any trigger to modify its configuration
+- All validation rules apply to edits
+- Changes are saved immediately
+
+#### Deleting Triggers
+- Click "Delete" to remove a trigger permanently
+- Confirmation is required before deletion
+
+### 4. Export and Import
+
+#### Exporting Triggers
+- Click "Export Triggers" to download a JSON file containing all trigger configurations
+- Export includes metadata like creation dates and statistics
+- Use for backup, sharing with team members, or deploying to production
+
+#### Importing Triggers
+- Click "Import Triggers" and select a previously exported JSON file
+- Existing triggers with matching IDs will be updated
+- New triggers will be created
+- Import validation ensures data integrity
 
 ## Understanding the Exported Data
 
-The exported JSON file contains a dual-format structure:
+### Geofence Data Structure
+
+The exported geofence data contains structure definitions with:
 
 ```json
 {
-  "geoJSON": {
-    "type": "FeatureCollection",
-    "features": [...]
-  },
-  "customFormat": {
-    "structures": [...],
-    "exportDate": "2025-07-09T17:49:54Z"
+  "version": "2.0",
+  "structures": [
+    {
+      "code": "BAKER",
+      "name": "Baker Library",
+      "description": "Main campus library with study spaces",
+      "type": "academic",
+      "parentId": null,
+      "mapPoints": [{"lat": 43.7056, "lng": -72.2943}, ...],
+      "walkPoints": [{"lat": 43.7055, "lng": -72.2944}, ...],
+      "triggerBand": {
+        "points": [...],
+        "thickness": 5
+      },
+      "lastModified": "2025-08-23T16:30:22Z"
+    }
+  ]
+}
+```
+
+### Triggers Data Structure
+
+The exported triggers data contains trigger configurations:
+
+```json
+{
+  "version": "1.0",
+  "triggers": [
+    {
+      "id": "trigger-123",
+      "structureCode": "BAKER",
+      "triggerType": "enter",
+      "notificationConfig": {
+        "title": "Welcome to Baker Library!",
+        "body": "Tap to see study spaces and current hours"
+      },
+      "flowId": "library_main_flow",
+      "isActive": true,
+      "createdAt": "2025-08-23T15:30:00Z",
+      "updatedAt": "2025-08-23T15:30:00Z"
+    }
+  ],
+  "metadata": {
+    "exportedAt": "2025-08-23T16:45:00Z",
+    "totalTriggers": 1
   }
 }
 ```
-
-### GeoJSON Format
-
-The `geoJSON` portion follows the standard GeoJSON format for compatibility with mapping libraries and GIS tools. For each structure, it includes:
-
-1. A feature for the map-drawn polygon (`type: "map"`)
-2. A feature for the GPS-walked polygon (`type: "walk"`)
-3. A feature for the trigger band (`type: "trigger"`)
-
-### Custom Format
-
-The `customFormat` portion contains our application-specific data structure that preserves:
-
-- Both the map-drawn and GPS-walked points separately
-- The trigger band with its thickness value
-- Additional metadata about each structure
-
-Example structure in custom format (v2.0 with hierarchy support):
-
-```json
-{
-  "id": "b4d8e-f7c2-...",
-  "name": "Baker Library",
-  "code": "BAKER",
-  "description": "Main campus library with study spaces",
-  "type": "academic",
-  "parentId": null,
-  "mapPoints": [
-    {"lat": 43.7056, "lng": -72.2943},
-    {"lat": 43.7057, "lng": -72.2939},
-    ...
-  ],
-  "walkPoints": [
-    {"lat": 43.7055, "lng": -72.2944},
-    {"lat": 43.7058, "lng": -72.2938},
-    ...
-  ],
-  "triggerBand": {
-    "points": [...],
-    "thickness": 5
-  },
-  "lastModified": "2025-07-09T16:30:22Z"
-}
-```
-
-### Hierarchy in Exported Data
-
-The exported data now includes parent-child relationships:
-- `parentId`: References the parent structure's ID (null for root structures)
-- GeoJSON features include `parentId` in properties
-- Custom format preserves the complete hierarchy structure
 
 ## Using the Data in Your Applications
 
-### For Geofencing in Mobile/Web Apps
+### For Flutter/Dart Integration
 
-The trigger band polygon is designed to serve as your actual geofence boundary:
+The exported trigger data is designed to work seamlessly with the Flutter geofencing implementation. You just have to parse the JSON and create triggers using the provided structure codes.
 
-1. Extract the trigger band coordinates from either format
-2. Use these coordinates with a geofencing library in your application
-3. The thickness value represents how precise the boundary is
+```dart
+// Import trigger configuration
+final Map<String, List<GeofencingTrigger>> structureTriggers = {};
 
-Example implementation in a JavaScript application:
-
-```javascript
-// Using the GeoJSON format
-const triggerFeature = exportedData.geoJSON.features.find(
-  f => f.properties.type === "trigger" && f.properties.name === "Baker Library"
-);
-const coordinates = triggerFeature.geometry.coordinates[0];
-
-// Or using the custom format
-const structure = exportedData.customFormat.structures.find(
-  s => s.name === "Baker Library"
-);
-const triggerPoints = structure.triggerBand.points;
-
-// Use with a geofencing library
-myGeofenceLib.create({
-  id: "baker-library",
-  polygon: coordinates, // or convert triggerPoints to required format
-  events: {
-    onEnter: () => console.log("Entered Baker Library zone"),
-    onExit: () => console.log("Exited Baker Library zone")
+// Group triggers by structure code
+for (final trigger in triggerData.triggers) {
+  if (!structureTriggers.containsKey(trigger.structureCode)) {
+    structureTriggers[trigger.structureCode] = [];
   }
-});
+  structureTriggers[trigger.structureCode]!.add(trigger);
+}
+
+// Set up geofencing triggers for each structure
+for (final entry in structureTriggers.entries) {
+  final structureCode = entry.key;
+  final triggers = entry.value;
+  
+  // Find enter and exit triggers
+  final enterTrigger = triggers.firstWhere(
+    (t) => t.triggerType == 'enter',
+    orElse: () => null,
+  );
+  final exitTrigger = triggers.firstWhere(
+    (t) => t.triggerType == 'exit',
+    orElse: () => null,
+  );
+  
+  EvergreenGeofencing.setStructureTriggers(
+    structureCode,
+    onEnterTrigger: enterTrigger != null ? GeofencingTrigger(
+      callback: (code, name, location) async {
+        // Show notification if configured
+        if (enterTrigger.isActive) {
+          await NotificationService.show(
+            title: enterTrigger.notificationConfig.title,
+            body: enterTrigger.notificationConfig.body,
+          );
+          
+          // Trigger Dialogflow
+          await Dialogflow.triggerFlow(enterTrigger.flowId);
+        }
+      },
+      notificationConfig: NotificationConfig(
+        title: enterTrigger.notificationConfig.title,
+        body: enterTrigger.notificationConfig.body,
+      ),
+    ) : null,
+    onExitTrigger: exitTrigger != null ? GeofencingTrigger(
+      callback: (code, name, location) async {
+        // Show notification if configured
+        if (exitTrigger.isActive) {
+          await NotificationService.show(
+            title: exitTrigger.notificationConfig.title,
+            body: exitTrigger.notificationConfig.body,
+          );
+          
+          // Trigger Dialogflow
+          await Dialogflow.triggerFlow(exitTrigger.flowId);
+        }
+      },
+      notificationConfig: NotificationConfig(
+        title: exitTrigger.notificationConfig.title,
+        body: exitTrigger.notificationConfig.body,
+      ),
+    ) : null,
+  );
+}
 ```
 
-### For Visualization
+### Alternative Approach: Individual Trigger Setup
 
-The GeoJSON format can be directly used with mapping libraries:
+If you prefer to handle each trigger individually:
 
-```javascript
-// Example with Mapbox GL
-map.addSource('geofences', {
-  type: 'geojson',
-  data: exportedData.geoJSON
-});
-
-map.addLayer({
-  id: 'trigger-zones',
-  type: 'fill',
-  source: 'geofences',
-  filter: ['==', ['get', 'type'], 'trigger'],
-  paint: {
-    'fill-color': '#FF9500',
-    'fill-opacity': 0.3,
-    'fill-outline-color': '#FF7B00'
-  }
-});
+```dart
+// Assuming we're already looping through the correct triggers
+for (final trigger in triggers) {
+  if (!trigger.isActive) continue; // Skip inactive triggers
+  
+  final geofencingTrigger = GeofencingTrigger(
+    callback: (code, name, location) async {
+      // Show notification and trigger flow
+      await NotificationService.show(
+        title: trigger.notificationConfig.title,
+        body: trigger.notificationConfig.body,
+      );
+      await Dialogflow.triggerFlow(trigger.flowId); // assuming there's a Dialogflow service
+    },
+    notificationConfig: NotificationConfig(
+      title: trigger.notificationConfig.title,
+      body: trigger.notificationConfig.body,
+    ),
+  );
+  
+  // Use ternary operator to determine trigger type
+  trigger.triggerType == 'enter' 
+    ? EvergreenGeofencing.setStructureTriggers(
+        trigger.structureCode,
+        onEnterTrigger: geofencingTrigger,
+      )
+    : EvergreenGeofencing.setStructureTriggers(
+        trigger.structureCode,
+        onExitTrigger: geofencingTrigger,
+      );
+}
 ```
 
-## Troubleshooting
+## Navigation
 
-### GPS Issues
-- For best results, use the app outdoors or near windows
-- Stand still for a few seconds before adding walk points
-- Wait for GPS accuracy to improve before collecting points
-
-### Data Management
-- If you need to start over, use the "Clear All Data" option
-- Export your work frequently as a backup
-- Each team member can create their own export file, and these can be combined later
+- **Geofencing Tab**: Create and manage structure boundaries
+- **Triggers Tab**: Configure location-based notifications and flows
+- **Back Button**: Navigate back to previous screens when creating/editing
+- **Hierarchy Manager**: Access advanced structure relationship management
 
 ## About Next.js
 
-This project uses [Next.js](https://nextjs.org) with the App Router. For more information about Next.js, check out:
+This project uses [Next.js](https://nextjs.org) with the App Router and TypeScript. For more information about Next.js, check out:
 - [Next.js Documentation](https://nextjs.org/docs)
 - [Learn Next.js](https://nextjs.org/learn)

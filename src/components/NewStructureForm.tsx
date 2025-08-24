@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useApp } from '@/hooks/useApp';
-import { STRUCTURE_TYPES, capitalizeStructureType, StructureType } from '@/types';
+import { STRUCTURE_TYPES, StructureType } from '@/types';
+import { capitalizeStructureType } from '@/utils/structUtils';
 import SearchableSelect from './ui/SearchableSelect';
 
 export default function NewStructureForm() {
