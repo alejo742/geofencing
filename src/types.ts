@@ -124,16 +124,32 @@ interface NotificationConfig {
   body: string;
 }
 
-interface GeofencingTrigger {
+// Base trigger interface
+interface BaseTrigger {
   id: string; // Unique identifier for the trigger
+  type: 'membership' | 'permanence'; // Type of trigger
   structureCode: string; // Structure this trigger belongs to
-  triggerType: 'enter' | 'exit'; // When to trigger
   notificationConfig: NotificationConfig;
   flowId: string; // Flow identifier for the Dialogflow CX that should be triggered
   isActive: boolean; // Whether the trigger is active
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
 }
+
+// Membership trigger (enter/exit)
+interface MembershipTrigger extends BaseTrigger {
+  type: 'membership';
+  triggerType: 'enter' | 'exit'; // When to trigger
+}
+
+// Permanence trigger (time-based)
+interface PermanenceTrigger extends BaseTrigger {
+  type: 'permanence';
+  permanenceHours: number; // Hours required to trigger
+}
+
+// Union type for all triggers
+type GeofencingTrigger = MembershipTrigger | PermanenceTrigger;
 
 // Stored triggers format
 interface TriggersExport {
@@ -170,6 +186,9 @@ export type {
 
   // Trigger Types
   NotificationConfig,
+  BaseTrigger,
+  MembershipTrigger,
+  PermanenceTrigger,
   GeofencingTrigger,
   TriggersExport
 };

@@ -13,6 +13,10 @@ export const VALIDATION_RULES = {
   flowId: {
     required: true,
     pattern: /^[a-zA-Z0-9_-]+$/ // Allow alphanumeric, underscore, and hyphen
+  },
+  permanenceHours: {
+    min: 1,
+    max: 24
   }
 } as const;
 
@@ -23,6 +27,7 @@ export interface ValidationResult {
     title?: string;
     body?: string;
     flowId?: string;
+    permanenceHours?: string;
   };
 }
 
@@ -69,20 +74,39 @@ export function validateFlowId(flowId: string): ValidationResult {
   };
 }
 
+// Validate permanence hours
+export function validatePermanenceHours(hours: number): ValidationResult {
+  const errors: ValidationResult['errors'] = {};
+
+  if (hours < VALIDATION_RULES.permanenceHours.min) {
+    errors.flowId = `Permanence hours must be at least ${VALIDATION_RULES.permanenceHours.min}`;
+  } else if (hours > VALIDATION_RULES.permanenceHours.max) {
+    errors.flowId = `Permanence hours must be no more than ${VALIDATION_RULES.permanenceHours.max}`;
+  }
+
+  return {
+    isValid: Object.keys(errors).length === 0,
+    errors
+  };
+}
+
 // Validate complete trigger data
 export function validateTriggerData(
   title: string,
   body: string,
-  flowId: string
+  flowId: string,
+  permanenceHours?: number
 ): ValidationResult {
   const notificationResult = validateNotificationConfig(title, body);
   const flowIdResult = validateFlowId(flowId);
+  const permanenceResult = permanenceHours !== undefined ? validatePermanenceHours(permanenceHours) : { isValid: true, errors: {} };
 
   return {
-    isValid: notificationResult.isValid && flowIdResult.isValid,
+    isValid: notificationResult.isValid && flowIdResult.isValid && permanenceResult.isValid,
     errors: {
       ...notificationResult.errors,
-      ...flowIdResult.errors
+      ...flowIdResult.errors,
+      ...permanenceResult.errors
     }
   };
 }
@@ -94,8 +118,16 @@ export function formatTriggerDisplay(trigger: GeofencingTrigger): {
   statusLabel: string;
   statusColor: string;
 } {
-  const typeLabel = trigger.triggerType === 'enter' ? 'On Enter' : 'On Exit';
-  const typeIcon = trigger.triggerType === 'enter' ? '🚪➡️' : '🚪⬅️';
+  let typeLabel: string;
+  let typeIcon: string;
+
+  if (trigger.type === 'membership') {
+    typeLabel = trigger.triggerType === 'enter' ? 'On Enter' : 'On Exit';
+    typeIcon = trigger.triggerType === 'enter' ? '🚪➡️' : '🚪⬅️';
+  } else {
+    typeLabel = `After ${trigger.permanenceHours}h`;
+    typeIcon = '⏰';
+  }
   
   const statusLabel = trigger.isActive ? 'Active' : 'Inactive';
   const statusColor = trigger.isActive ? 'text-green-600' : 'text-gray-500';
@@ -109,7 +141,7 @@ export function formatTriggerDisplay(trigger: GeofencingTrigger): {
 }
 
 // Generate trigger preview text
-export function generateTriggerPreview(
+export function generateMembershipTriggerPreview(
   title: string,
   body: string,
   flowId: string,
@@ -119,19 +151,51 @@ export function generateTriggerPreview(
   return `When ${action} the structure, users will see: "${title}" - "${body}" and flow "${flowId}" will be triggered.`;
 }
 
-// Check for duplicate triggers
-export function hasDuplicateTrigger(
+// Generate permanence trigger preview text
+export function generatePermanenceTriggerPreview(
+  title: string,
+  body: string,
+  flowId: string,
+  permanenceHours: number
+): string {
+  return `After staying in the structure for ${permanenceHours} hour${permanenceHours !== 1 ? 's' : ''}, users will see: "${title}" - "${body}" and flow "${flowId}" will be triggered.`;
+}
+
+// Legacy function for backward compatibility
+export const generateTriggerPreview = generateMembershipTriggerPreview;
+
+// Check for duplicate membership triggers
+export function hasDuplicateMembershipTrigger(
   triggers: GeofencingTrigger[],
   structureCode: string,
   triggerType: 'enter' | 'exit',
   excludeId?: string
 ): boolean {
   return triggers.some(trigger => 
+    trigger.type === 'membership' &&
     trigger.structureCode === structureCode &&
     trigger.triggerType === triggerType &&
     trigger.id !== excludeId
   );
 }
+
+// Check for duplicate permanence triggers
+export function hasDuplicatePermanenceTrigger(
+  triggers: GeofencingTrigger[],
+  structureCode: string,
+  permanenceHours: number,
+  excludeId?: string
+): boolean {
+  return triggers.some(trigger => 
+    trigger.type === 'permanence' &&
+    trigger.structureCode === structureCode &&
+    trigger.permanenceHours === permanenceHours &&
+    trigger.id !== excludeId
+  );
+}
+
+// Legacy function for backward compatibility
+export const hasDuplicateTrigger = hasDuplicateMembershipTrigger;
 
 // Get character count with color coding
 export function getCharacterCountInfo(text: string, maxLength: number): {

@@ -16,6 +16,8 @@ export default function TriggersPage() {
     triggers,
     isLoading,
     createTrigger,
+    createMembershipTrigger,
+    createPermanenceTrigger,
     updateTrigger,
     deleteTrigger,
     toggleTriggerActive,
@@ -62,7 +64,9 @@ export default function TriggersPage() {
   };
 
   const handleSubmitTrigger = async (data: {
-    triggerType: 'enter' | 'exit';
+    type: 'membership' | 'permanence';
+    triggerType?: 'enter' | 'exit';
+    permanenceHours?: number;
     title: string;
     body: string;
     flowId: string;
@@ -73,7 +77,6 @@ export default function TriggersPage() {
     try {
       if (editingTrigger) {
         updateTrigger(editingTrigger.id, {
-          triggerType: data.triggerType,
           notificationConfig: {
             title: data.title,
             body: data.body
@@ -81,13 +84,23 @@ export default function TriggersPage() {
           flowId: data.flowId
         });
       } else {
-        createTrigger(
-          selectedStructure.code,
-          data.triggerType,
-          data.title,
-          data.body,
-          data.flowId
-        );
+        if (data.type === 'membership' && data.triggerType) {
+          createMembershipTrigger(
+            selectedStructure.code,
+            data.triggerType,
+            data.title,
+            data.body,
+            data.flowId
+          );
+        } else if (data.type === 'permanence' && data.permanenceHours) {
+          createPermanenceTrigger(
+            selectedStructure.code,
+            data.permanenceHours,
+            data.title,
+            data.body,
+            data.flowId
+          );
+        }
       }
       setViewMode('list');
       setSelectedStructure(null);

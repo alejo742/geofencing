@@ -2,14 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { Structure, GeofencingTrigger } from '@/types';
-import { validateTriggerData, getCharacterCountInfo, VALIDATION_RULES, generateTriggerPreview, hasDuplicateTrigger } from '@/utils/triggerUtils';
+import { validateTriggerData, getCharacterCountInfo, VALIDATION_RULES, generateMembershipTriggerPreview, generatePermanenceTriggerPreview, hasDuplicateMembershipTrigger, hasDuplicatePermanenceTrigger, validatePermanenceHours } from '@/utils/triggerUtils';
 import { capitalizeStructureType } from '@/utils/structUtils';
 
 interface TriggerFormProps {
   structure: Structure;
   existingTriggers: GeofencingTrigger[];
   onSubmit: (data: {
-    triggerType: 'enter' | 'exit';
+    type: 'membership' | 'permanence';
+    triggerType?: 'enter' | 'exit';
+    permanenceHours?: number;
     title: string;
     body: string;
     flowId: string;
@@ -25,32 +27,42 @@ export default function TriggerForm({
   editingTrigger,
   isSubmitting = false
 }: TriggerFormProps) {
-  const [triggerType, setTriggerType] = useState<'enter' | 'exit'>(editingTrigger?.triggerType || 'enter');
+  const [selectedType, setSelectedType] = useState<'membership' | 'permanence'>(
+    editingTrigger?.type || 'membership'
+  );
+  const [triggerType, setTriggerType] = useState<'enter' | 'exit'>(
+    editingTrigger?.type === 'membership' ? editingTrigger.triggerType : 'enter'
+  );
+  const [permanenceHours, setPermanenceHours] = useState<number>(
+    editingTrigger?.type === 'permanence' ? editingTrigger.permanenceHours : 2
+  );
   const [title, setTitle] = useState(editingTrigger?.notificationConfig.title || '');
   const [body, setBody] = useState(editingTrigger?.notificationConfig.body || '');
   const [flowId, setFlowId] = useState(editingTrigger?.flowId || '');
   const [showPreview, setShowPreview] = useState(false);
 
   // Validation
-  const validation = validateTriggerData(title, body, flowId);
+  const validation = validateTriggerData(title, body, flowId, selectedType === 'permanence' ? permanenceHours : undefined);
+  const hoursValidation = selectedType === 'permanence' ? validatePermanenceHours(permanenceHours) : { isValid: true, errors: {} };
   const titleInfo = getCharacterCountInfo(title, VALIDATION_RULES.title.maxLength);
   const bodyInfo = getCharacterCountInfo(body, VALIDATION_RULES.body.maxLength);
   
   // Check for duplicates
-  const isDuplicate = hasDuplicateTrigger(
-    existingTriggers,
-    structure.code,
-    triggerType,
-    editingTrigger?.id
-  );
+  const isDuplicate = selectedType === 'membership' 
+    ? hasDuplicateMembershipTrigger(existingTriggers, structure.code, triggerType, editingTrigger?.id)
+    : hasDuplicatePermanenceTrigger(existingTriggers, structure.code, permanenceHours, editingTrigger?.id);
 
-  const isFormValid = validation.isValid && !isDuplicate && title.trim().length >= VALIDATION_RULES.title.minLength && body.trim().length >= VALIDATION_RULES.body.minLength;
+  const isFormValid = validation.isValid && hoursValidation.isValid && !isDuplicate && 
+    title.trim().length >= VALIDATION_RULES.title.minLength && 
+    body.trim().length >= VALIDATION_RULES.body.minLength;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isFormValid && !isSubmitting) {
       onSubmit({
-        triggerType,
+        type: selectedType,
+        triggerType: selectedType === 'membership' ? triggerType : undefined,
+        permanenceHours: selectedType === 'permanence' ? permanenceHours : undefined,
         title: title.trim(),
         body: body.trim(),
         flowId: flowId.trim()
@@ -58,7 +70,9 @@ export default function TriggerForm({
     }
   };
 
-  const triggerPreview = generateTriggerPreview(title, body, flowId, triggerType);
+  const triggerPreview = selectedType === 'membership' 
+    ? generateMembershipTriggerPreview(title, body, flowId, triggerType)
+    : generatePermanenceTriggerPreview(title, body, flowId, permanenceHours);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-7 gap-6 max-h-screen">
@@ -96,81 +110,174 @@ export default function TriggerForm({
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Trigger Type */}
+            {/* Trigger Category */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">
-                Trigger Event
+                Trigger Category
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={() => setTriggerType('enter')}
+                  onClick={() => setSelectedType('membership')}
                   className={`p-4 border-2 rounded-lg text-left transition-colors ${
-                    triggerType === 'enter'
+                    selectedType === 'membership'
                       ? 'border-green-500 bg-green-50 text-green-700'
-                      : hasDuplicateTrigger(existingTriggers, structure.code, 'enter', editingTrigger?.id)
-                        ? 'border-red-300 bg-red-50 text-red-700 cursor-not-allowed opacity-75'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                      : 'border-gray-200 hover:border-gray-300 text-gray-700'
                   }`}
-                  disabled={hasDuplicateTrigger(existingTriggers, structure.code, 'enter', editingTrigger?.id)}
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-2xl">🚪➡️</span>
+                    <span className="text-2xl">🚪</span>
                     <div>
-                      <div className="font-medium">On Enter</div>
+                      <div className="font-medium">Membership</div>
                       <div className="text-sm opacity-75">
-                        {hasDuplicateTrigger(existingTriggers, structure.code, 'enter', editingTrigger?.id)
-                          ? 'Already exists'
-                          : 'When user enters structure'
-                        }
+                        Enter/exit based triggers
                       </div>
                     </div>
                   </div>
                 </button>
                 <button
                   type="button"
-                  onClick={() => setTriggerType('exit')}
+                  onClick={() => setSelectedType('permanence')}
                   className={`p-4 border-2 rounded-lg text-left transition-colors ${
-                    triggerType === 'exit'
+                    selectedType === 'permanence'
                       ? 'border-green-500 bg-green-50 text-green-700'
-                      : hasDuplicateTrigger(existingTriggers, structure.code, 'exit', editingTrigger?.id)
-                        ? 'border-red-300 bg-red-50 text-red-700 cursor-not-allowed opacity-75'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                      : 'border-gray-200 hover:border-gray-300 text-gray-700'
                   }`}
-                  disabled={hasDuplicateTrigger(existingTriggers, structure.code, 'exit', editingTrigger?.id)}
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-2xl">🚪⬅️</span>
+                    <span className="text-2xl">⏰</span>
                     <div>
-                      <div className="font-medium">On Exit</div>
+                      <div className="font-medium">Permanence</div>
                       <div className="text-sm opacity-75">
-                        {hasDuplicateTrigger(existingTriggers, structure.code, 'exit', editingTrigger?.id)
-                          ? 'Already exists'
-                          : 'When user leaves structure'
-                        }
+                        Time-spent based triggers
                       </div>
                     </div>
                   </div>
                 </button>
               </div>
-              {isDuplicate && (
-                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <div className="flex items-start gap-2">
-                    <svg className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 15.5c-.77.833.192 2.5 1.732 2.5z" />
-                    </svg>
-                    <div>
-                      <p className="text-sm font-medium text-red-800">
-                        Duplicate Trigger Detected
-                      </p>
-                      <p className="text-sm text-red-700 mt-1">
-                        A "{triggerType}" trigger already exists for "{structure.name}". Each structure can have only one trigger per type (enter/exit).
-                      </p>
+            </div>
+
+            {/* Membership Trigger Event Options */}
+            {selectedType === 'membership' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Trigger Event
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setTriggerType('enter')}
+                    className={`p-4 border-2 rounded-lg text-left transition-colors ${
+                      triggerType === 'enter'
+                        ? 'border-green-500 bg-green-50 text-green-700'
+                        : hasDuplicateMembershipTrigger(existingTriggers, structure.code, 'enter', editingTrigger?.id)
+                          ? 'border-red-300 bg-red-50 text-red-700 cursor-not-allowed opacity-75'
+                          : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                    }`}
+                    disabled={hasDuplicateMembershipTrigger(existingTriggers, structure.code, 'enter', editingTrigger?.id)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🚪➡️</span>
+                      <div>
+                        <div className="font-medium">On Enter</div>
+                        <div className="text-sm opacity-75">
+                          {hasDuplicateMembershipTrigger(existingTriggers, structure.code, 'enter', editingTrigger?.id)
+                            ? 'Already exists'
+                            : 'When user enters structure'
+                          }
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTriggerType('exit')}
+                    className={`p-4 border-2 rounded-lg text-left transition-colors ${
+                      triggerType === 'exit'
+                        ? 'border-green-500 bg-green-50 text-green-700'
+                        : hasDuplicateMembershipTrigger(existingTriggers, structure.code, 'exit', editingTrigger?.id)
+                          ? 'border-red-300 bg-red-50 text-red-700 cursor-not-allowed opacity-75'
+                          : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                    }`}
+                    disabled={hasDuplicateMembershipTrigger(existingTriggers, structure.code, 'exit', editingTrigger?.id)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🚪⬅️</span>
+                      <div>
+                        <div className="font-medium">On Exit</div>
+                        <div className="text-sm opacity-75">
+                          {hasDuplicateMembershipTrigger(existingTriggers, structure.code, 'exit', editingTrigger?.id)
+                            ? 'Already exists'
+                            : 'When user leaves structure'
+                          }
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+                {isDuplicate && selectedType === 'membership' && (
+                  <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <svg className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 15.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                      <div>
+                        <p className="text-sm font-medium text-red-800">
+                          Duplicate Trigger Detected
+                        </p>
+                        <p className="text-sm text-red-700 mt-1">
+                          A "{triggerType}" trigger already exists for "{structure.name}". Each structure can have only one trigger per type (enter/exit).
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
+
+            {/* Permanence Hours Input */}
+            {selectedType === 'permanence' && (
+              <div>
+                <label htmlFor="permanenceHours" className="block text-sm font-medium text-gray-700 mb-2">
+                  Permanence Hours
+                </label>
+                <input
+                  type="number"
+                  id="permanenceHours"
+                  value={permanenceHours}
+                  onChange={(e) => setPermanenceHours(Number(e.target.value))}
+                  min="1"
+                  max="24"
+                  placeholder="e.g., 2"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none ${
+                    validation.errors.permanenceHours ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                />
+                {validation.errors.permanenceHours && (
+                  <p className="text-sm text-red-600 mt-1">{validation.errors.permanenceHours}</p>
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  Trigger will fire when user has spent this many hours within the structure (1-24 hours)
+                </p>
+                {hasDuplicatePermanenceTrigger(existingTriggers, structure.code, permanenceHours, editingTrigger?.id) && (
+                  <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <svg className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 15.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                      <div>
+                        <p className="text-sm font-medium text-red-800">
+                          Duplicate Permanence Trigger Detected
+                        </p>
+                        <p className="text-sm text-red-700 mt-1">
+                          A permanence trigger for {permanenceHours} hour{permanenceHours !== 1 ? 's' : ''} already exists for "{structure.name}".
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Notification Title */}
             <div>
@@ -332,28 +439,38 @@ export default function TriggerForm({
               </div>
             </div>
 
-            {/* Trigger Info */}
-            <div>
-              <h5 className="text-xs font-medium text-gray-600 mb-2 uppercase tracking-wide">Trigger Event</h5>
-              <div className="flex items-center gap-2 p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                <span className="text-lg">
-                  {triggerType === 'enter' ? '🚪➡️' : '🚪⬅️'}
-                </span>
-                <div className="flex-1">
-                  <div className="text-sm font-medium text-purple-700">
-                    {triggerType === 'enter' ? 'On Enter' : 'On Exit'}
-                  </div>
-                  <div className="text-xs text-purple-600">
-                    Triggers when user {triggerType === 'enter' ? 'enters' : 'exits'} structure
+            {/* Trigger Info - Only show for membership triggers */}
+            {selectedType === 'membership' && (
+              <div>
+                <h5 className="text-xs font-medium text-gray-600 mb-2 uppercase tracking-wide">Trigger Event</h5>
+                <div className="flex items-center gap-2 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                  <span className="text-lg">
+                    {triggerType === 'enter' ? '🚪➡️' : '🚪⬅️'}
+                  </span>
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-purple-700">
+                      {triggerType === 'enter' ? 'On Enter' : 'On Exit'}
+                    </div>
+                    <div className="text-xs text-purple-600">
+                      Triggers when user {triggerType === 'enter' ? 'enters' : 'exits'} structure
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Summary */}
             <div className="mt-4 pt-4 border-t border-gray-200">
               <p className="text-xs text-gray-500 leading-relaxed">
-                When users <strong>{triggerType}</strong> "{structure.name}", they'll see the notification above and flow "<strong>{flowId || 'flow_id'}</strong>" will be triggered.
+                {selectedType === 'membership' ? (
+                  <>
+                    When users <strong>{triggerType}</strong> "{structure.name}", they'll see the notification above and flow "<strong>{flowId || 'flow_id'}</strong>" will be triggered.
+                  </>
+                ) : (
+                  <>
+                    When users spend <strong>{permanenceHours} hour{permanenceHours !== 1 ? 's' : ''}</strong> in "{structure.name}", they'll see the notification above and flow "<strong>{flowId || 'flow_id'}</strong>" will be triggered.
+                  </>
+                )}
               </p>
             </div>
           </div>

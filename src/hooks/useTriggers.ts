@@ -39,8 +39,8 @@ export function useTriggers() {
     return `trigger_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }, []);
 
-  // Create a new trigger
-  const createTrigger = useCallback((
+  // Create a new membership trigger
+  const createMembershipTrigger = useCallback((
     structureCode: string,
     triggerType: 'enter' | 'exit',
     title: string,
@@ -50,6 +50,7 @@ export function useTriggers() {
     const now = new Date().toISOString();
     const newTrigger: GeofencingTrigger = {
       id: generateTriggerId(),
+      type: 'membership',
       structureCode,
       triggerType,
       notificationConfig: {
@@ -67,10 +68,42 @@ export function useTriggers() {
     return newTrigger;
   }, [triggers, generateTriggerId, saveTriggers]);
 
+  // Create a new permanence trigger
+  const createPermanenceTrigger = useCallback((
+    structureCode: string,
+    permanenceHours: number,
+    title: string,
+    body: string,
+    flowId: string
+  ): GeofencingTrigger => {
+    const now = new Date().toISOString();
+    const newTrigger: GeofencingTrigger = {
+      id: generateTriggerId(),
+      type: 'permanence',
+      structureCode,
+      permanenceHours,
+      notificationConfig: {
+        title: title.trim(),
+        body: body.trim()
+      },
+      flowId: flowId.trim(),
+      isActive: true,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    const updatedTriggers = [...triggers, newTrigger];
+    saveTriggers(updatedTriggers);
+    return newTrigger;
+  }, [triggers, generateTriggerId, saveTriggers]);
+
+  // Legacy create function for backward compatibility
+  const createTrigger = createMembershipTrigger;
+
   // Update an existing trigger
   const updateTrigger = useCallback((
     triggerId: string,
-    updates: Partial<Pick<GeofencingTrigger, 'notificationConfig' | 'flowId' | 'isActive' | 'triggerType'>>
+    updates: Partial<Pick<GeofencingTrigger, 'notificationConfig' | 'flowId' | 'isActive'>>
   ) => {
     const updatedTriggers = triggers.map(trigger => {
       if (trigger.id === triggerId) {
@@ -78,7 +111,7 @@ export function useTriggers() {
           ...trigger,
           ...updates,
           updatedAt: new Date().toISOString()
-        };
+        } as GeofencingTrigger;
       }
       return trigger;
     });
@@ -151,16 +184,20 @@ export function useTriggers() {
   const getStatistics = useCallback(() => {
     const totalTriggers = triggers.length;
     const activeTriggers = triggers.filter(t => t.isActive).length;
-    const enterTriggers = triggers.filter(t => t.triggerType === 'enter').length;
-    const exitTriggers = triggers.filter(t => t.triggerType === 'exit').length;
+    const membershipTriggers = triggers.filter(t => t.type === 'membership');
+    const enterTriggers = membershipTriggers.filter(t => t.triggerType === 'enter').length;
+    const exitTriggers = membershipTriggers.filter(t => t.triggerType === 'exit').length;
+    const permanenceTriggers = triggers.filter(t => t.type === 'permanence').length;
     const structuresWithTriggers = new Set(triggers.map(t => t.structureCode)).size;
 
     return {
       totalTriggers,
       activeTriggers,
       inactiveTriggers: totalTriggers - activeTriggers,
+      membershipTriggers: membershipTriggers.length,
       enterTriggers,
       exitTriggers,
+      permanenceTriggers,
       structuresWithTriggers
     };
   }, [triggers]);
@@ -172,6 +209,8 @@ export function useTriggers() {
     
     // CRUD operations
     createTrigger,
+    createMembershipTrigger,
+    createPermanenceTrigger,
     updateTrigger,
     deleteTrigger,
     
