@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { GeofencingTrigger, TriggersExport } from '@/types';
+import { Trigger, TriggersExport } from '@/types';
 
 const TRIGGERS_STORAGE_KEY = 'geofencing-triggers';
 
 export function useTriggers() {
-  const [triggers, setTriggers] = useState<GeofencingTrigger[]>([]);
+  const [triggers, setTriggers] = useState<Trigger[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Load triggers from localStorage on mount
@@ -25,7 +25,7 @@ export function useTriggers() {
   }, []);
 
   // Save triggers to localStorage whenever triggers change
-  const saveTriggers = useCallback((triggersToSave: GeofencingTrigger[]) => {
+  const saveTriggers = useCallback((triggersToSave: Trigger[]) => {
     try {
       localStorage.setItem(TRIGGERS_STORAGE_KEY, JSON.stringify(triggersToSave));
       setTriggers(triggersToSave);
@@ -46,9 +46,9 @@ export function useTriggers() {
     title: string,
     body: string,
     flowId: string
-  ): GeofencingTrigger => {
+  ): Trigger => {
     const now = new Date().toISOString();
-    const newTrigger: GeofencingTrigger = {
+    const newTrigger: Trigger = {
       id: generateTriggerId(),
       type: 'membership',
       structureCode,
@@ -57,6 +57,7 @@ export function useTriggers() {
         title: title.trim(),
         body: body.trim()
       },
+      severity: 'medium',
       flowId: flowId.trim(),
       isActive: true,
       createdAt: now,
@@ -75,9 +76,9 @@ export function useTriggers() {
     title: string,
     body: string,
     flowId: string
-  ): GeofencingTrigger => {
+  ): Trigger => {
     const now = new Date().toISOString();
-    const newTrigger: GeofencingTrigger = {
+    const newTrigger: Trigger = {
       id: generateTriggerId(),
       type: 'permanence',
       structureCode,
@@ -86,6 +87,7 @@ export function useTriggers() {
         title: title.trim(),
         body: body.trim()
       },
+      severity: 'medium',
       flowId: flowId.trim(),
       isActive: true,
       createdAt: now,
@@ -103,7 +105,7 @@ export function useTriggers() {
   // Update an existing trigger
   const updateTrigger = useCallback((
     triggerId: string,
-    updates: Partial<Pick<GeofencingTrigger, 'notificationConfig' | 'flowId' | 'isActive'>>
+    updates: Partial<Pick<Trigger, 'notificationConfig' | 'flowId' | 'isActive'>>
   ) => {
     const updatedTriggers = triggers.map(trigger => {
       if (trigger.id === triggerId) {
@@ -111,7 +113,7 @@ export function useTriggers() {
           ...trigger,
           ...updates,
           updatedAt: new Date().toISOString()
-        } as GeofencingTrigger;
+        } as Trigger;
       }
       return trigger;
     });
@@ -126,7 +128,10 @@ export function useTriggers() {
 
   // Get triggers for a specific structure
   const getTriggersForStructure = useCallback((structureCode: string) => {
-    return triggers.filter(trigger => trigger.structureCode === structureCode);
+    return triggers.filter(trigger => 
+      (trigger.type === 'membership' || trigger.type === 'permanence') && 
+      trigger.structureCode === structureCode
+    );
   }, [triggers]);
 
   // Toggle trigger active state
@@ -138,7 +143,10 @@ export function useTriggers() {
 
   // Check if structure has triggers
   const hasTriggersForStructure = useCallback((structureCode: string) => {
-    return triggers.some(trigger => trigger.structureCode === structureCode);
+    return triggers.some(trigger => 
+      (trigger.type === 'membership' || trigger.type === 'permanence') && 
+      trigger.structureCode === structureCode
+    );
   }, [triggers]);
 
   // Export triggers to JSON
@@ -188,7 +196,11 @@ export function useTriggers() {
     const enterTriggers = membershipTriggers.filter(t => t.triggerType === 'enter').length;
     const exitTriggers = membershipTriggers.filter(t => t.triggerType === 'exit').length;
     const permanenceTriggers = triggers.filter(t => t.type === 'permanence').length;
-    const structuresWithTriggers = new Set(triggers.map(t => t.structureCode)).size;
+    const structuresWithTriggers = new Set(
+      triggers
+        .filter(t => t.type === 'membership' || t.type === 'permanence')
+        .map(t => t.structureCode)
+    ).size;
 
     return {
       totalTriggers,

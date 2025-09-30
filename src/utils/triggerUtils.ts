@@ -1,4 +1,4 @@
-import { GeofencingTrigger } from '@/types';
+import { Trigger } from '@/types';
 
 // Validation constants
 export const VALIDATION_RULES = {
@@ -112,7 +112,7 @@ export function validateTriggerData(
 }
 
 // Format trigger for display
-export function formatTriggerDisplay(trigger: GeofencingTrigger): {
+export function formatTriggerDisplay(trigger: Trigger): {
   typeLabel: string;
   typeIcon: string;
   statusLabel: string;
@@ -124,9 +124,12 @@ export function formatTriggerDisplay(trigger: GeofencingTrigger): {
   if (trigger.type === 'membership') {
     typeLabel = trigger.triggerType === 'enter' ? 'On Enter' : 'On Exit';
     typeIcon = trigger.triggerType === 'enter' ? '🚪➡️' : '🚪⬅️';
-  } else {
+  } else if (trigger.type === 'permanence') {
     typeLabel = `After ${trigger.permanenceHours}h`;
     typeIcon = '⏰';
+  } else {
+    typeLabel = trigger.type;
+    typeIcon = '⚡';
   }
   
   const statusLabel = trigger.isActive ? 'Active' : 'Inactive';
@@ -166,7 +169,7 @@ export const generateTriggerPreview = generateMembershipTriggerPreview;
 
 // Check for duplicate membership triggers
 export function hasDuplicateMembershipTrigger(
-  triggers: GeofencingTrigger[],
+  triggers: Trigger[],
   structureCode: string,
   triggerType: 'enter' | 'exit',
   excludeId?: string
@@ -181,7 +184,7 @@ export function hasDuplicateMembershipTrigger(
 
 // Check for duplicate permanence triggers
 export function hasDuplicatePermanenceTrigger(
-  triggers: GeofencingTrigger[],
+  triggers: Trigger[],
   structureCode: string,
   permanenceHours: number,
   excludeId?: string

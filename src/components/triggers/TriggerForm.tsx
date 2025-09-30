@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Structure, GeofencingTrigger } from '@/types';
+import { Structure, Trigger } from '@/types';
 import { validateTriggerData, getCharacterCountInfo, VALIDATION_RULES, generateMembershipTriggerPreview, generatePermanenceTriggerPreview, hasDuplicateMembershipTrigger, hasDuplicatePermanenceTrigger, validatePermanenceHours } from '@/utils/triggerUtils';
 import { capitalizeStructureType } from '@/utils/structUtils';
 
 interface TriggerFormProps {
   structure: Structure;
-  existingTriggers: GeofencingTrigger[];
+  existingTriggers: Trigger[];
   onSubmit: (data: {
     type: 'membership' | 'permanence';
     triggerType?: 'enter' | 'exit';
@@ -16,7 +16,7 @@ interface TriggerFormProps {
     body: string;
     flowId: string;
   }) => void;
-  editingTrigger?: GeofencingTrigger;
+  editingTrigger?: Trigger;
   isSubmitting?: boolean;
 }
 
@@ -28,7 +28,9 @@ export default function TriggerForm({
   isSubmitting = false
 }: TriggerFormProps) {
   const [selectedType, setSelectedType] = useState<'membership' | 'permanence'>(
-    editingTrigger?.type || 'membership'
+    (editingTrigger?.type === 'membership' || editingTrigger?.type === 'permanence') 
+      ? editingTrigger.type 
+      : 'membership'
   );
   const [triggerType, setTriggerType] = useState<'enter' | 'exit'>(
     editingTrigger?.type === 'membership' ? editingTrigger.triggerType : 'enter'
@@ -93,7 +95,10 @@ export default function TriggerForm({
               </span>
               {/* Show existing triggers count */}
               {(() => {
-                const existingCount = existingTriggers.filter(t => t.structureCode === structure.code).length;
+                const existingCount = existingTriggers.filter(t => 
+                  (t.type === 'membership' || t.type === 'permanence') && 
+                  t.structureCode === structure.code
+                ).length;
                 if (existingCount > 0) {
                   return (
                     <>

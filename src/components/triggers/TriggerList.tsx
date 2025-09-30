@@ -1,15 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { GeofencingTrigger, Structure } from '@/types';
+import { Trigger, Structure } from '@/types';
 import { formatTriggerDisplay } from '@/utils/triggerUtils';
 import { capitalizeStructureType } from '@/utils/structUtils';
 import { formatDate } from '@/utils/formatters';
+import { Zap, Edit2, Trash2, Loader2, Calendar, MapPin } from 'lucide-react';
 
 interface TriggerListProps {
-  triggers: GeofencingTrigger[];
+  triggers: Trigger[];
   structures: Structure[];
-  onEditTrigger: (trigger: GeofencingTrigger) => void;
+  onEditTrigger: (trigger: Trigger) => void;
   onDeleteTrigger: (triggerId: string) => void;
   onToggleActive: (triggerId: string) => void;
   isLoading?: boolean;
@@ -63,9 +64,7 @@ export default function TriggerList({
     return (
       <div className="text-center py-12">
         <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-          <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM9 7h11M9 12h7M9 17h3" />
-          </svg>
+          <Zap className="w-8 h-8 text-gray-400" />
         </div>
         <h3 className="text-lg font-medium text-gray-900 mb-2">No triggers yet</h3>
         <p className="text-gray-500">Create your first geofencing trigger to get started.</p>
@@ -76,7 +75,9 @@ export default function TriggerList({
   return (
     <div className="space-y-4">
       {triggers.map((trigger) => {
-        const structure = getStructureForTrigger(trigger.structureCode);
+        const structure = (trigger.type === 'membership' || trigger.type === 'permanence') 
+          ? getStructureForTrigger(trigger.structureCode) 
+          : null;
         const displayInfo = formatTriggerDisplay(trigger);
         const isExpanded = expandedTriggers.has(trigger.id);
         const isDeleting = deletingTrigger === trigger.id;
@@ -201,26 +202,27 @@ export default function TriggerList({
                     
                     <button
                       onClick={() => onEditTrigger(trigger)}
-                      className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+                      className="flex items-center gap-1 px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
                     >
+                      <Edit2 className="w-3 h-3" />
                       Edit
                     </button>
                     
                     <button
                       onClick={() => handleDelete(trigger.id)}
                       disabled={isDeleting}
-                      className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex items-center gap-1 px-3 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isDeleting ? (
                         <div className="flex items-center gap-1">
-                          <svg className="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-                          </svg>
+                          <Loader2 className="animate-spin w-3 h-3" />
                           Deleting
                         </div>
                       ) : (
-                        'Delete'
+                        <>
+                          <Trash2 className="w-3 h-3" />
+                          Delete
+                        </>
                       )}
                     </button>
                   </div>

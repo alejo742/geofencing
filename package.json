@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "@types/leaflet": "^1.9.20",
+    "firebase": "^12.3.0",
     "leaflet": "^1.9.4",
+    "lucide-react": "^0.544.0",
     "material-symbols": "^0.32.0",
     "next": "15.3.5",
     "react": "^19.0.0",

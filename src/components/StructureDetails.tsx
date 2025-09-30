@@ -151,10 +151,7 @@ export default function StructureDetails() {
               <SearchableSelect
                 structures={getAvailableParents()}
                 value={parentId}
-                onChange={(newParentId) => {
-                  console.log('StructureDetails: parentId changing from', parentId, 'to', newParentId);
-                  setParentId(newParentId);
-                }}
+                onChange={setParentId}
                 placeholder="Search parent structures..."
                 excludeCode={activeStructure?.code}
                 maxDisplayItems={5}

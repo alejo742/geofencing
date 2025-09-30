@@ -97,7 +97,6 @@ export default function SearchableSelect({
   };
 
   const handleSelect = (structureCode: string) => {
-    console.log('SearchableSelect: handleSelect called with:', structureCode);
     onChange(structureCode);
     setIsOpen(false);
     setSearchQuery('');
@@ -105,7 +104,6 @@ export default function SearchableSelect({
   };
 
   const handleClear = () => {
-    console.log('SearchableSelect: handleClear called');
     onChange('');
     setIsOpen(false);
     setSearchQuery('');

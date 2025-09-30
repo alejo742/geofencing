@@ -127,9 +127,10 @@ interface NotificationConfig {
 // Base trigger interface
 interface BaseTrigger {
   id: string; // Unique identifier for the trigger
-  type: 'membership' | 'permanence'; // Type of trigger
-  structureCode: string; // Structure this trigger belongs to
+  type: 'membership' | 'permanence' | 'velocity' | 'screentime' | 'health' | 'canvas'; // Type of trigger
   notificationConfig: NotificationConfig;
+  cooldown?: number; // Cooldown period in hours
+  severity: 'low' | 'medium' | 'high'; // Optional severity level
   flowId: string; // Flow identifier for the Dialogflow CX that should be triggered
   isActive: boolean; // Whether the trigger is active
   createdAt: string; // ISO date string
@@ -139,22 +140,62 @@ interface BaseTrigger {
 // Membership trigger (enter/exit)
 interface MembershipTrigger extends BaseTrigger {
   type: 'membership';
+  structureCode: string; // Associated structure code
   triggerType: 'enter' | 'exit'; // When to trigger
 }
 
 // Permanence trigger (time-based)
 interface PermanenceTrigger extends BaseTrigger {
   type: 'permanence';
+  structureCode: string; // Associated structure code
   permanenceHours: number; // Hours required to trigger
 }
 
+interface AccelerometerTrigger extends BaseTrigger {
+  type: 'velocity';
+  timeSinceLastMotion: number; // Time since last motion in minutes
+}
+
+interface ScreenTimeTrigger extends BaseTrigger { //TODO: check exact attributes and find iOS compatible approach
+  type: 'screentime';
+  screenTimeMinutes: number; // Average daily screen time in minutes
+}
+
+interface HealthTrigger extends BaseTrigger {
+  type: 'health';
+  heartRate: number; // Average heart rate (bpm)
+  restingHeartRate: number; // Average resting heart rate (bpm)
+  dailyStepCount: number; // Average daily step count
+  lastNightSleepHours: number; // Average last night sleep hours
+}
+
+interface CanvasTrigger extends BaseTrigger {
+  type: 'canvas';
+  // Assignment-related triggers
+  assignmentDueInHours?: number; // Hours until soonest next assignment is due
+  upcomingAssignmentsCount?: number; // Number of assignments due in next 7 days
+  
+  // Grade-related triggers
+  averageGrade?: number; // Current average grade percentage (0-100)
+  failingCourses?: number; // Number of courses with grade below 60%
+  
+  // Engagement triggers
+  daysSinceLastLogin?: number; // Days since last Canvas login
+  
+  // Course activity triggers
+  unsubmittedQuizzes?: number; // Number of available quizzes not taken
+  
+  // Time management triggers
+  averageSubmissionDelay?: number; // Average hours late for submissions
+}
+
 // Union type for all triggers
-type GeofencingTrigger = MembershipTrigger | PermanenceTrigger;
+type Trigger = MembershipTrigger | PermanenceTrigger | ScreenTimeTrigger | HealthTrigger | CanvasTrigger;
 
 // Stored triggers format
 interface TriggersExport {
   version: string;
-  triggers: GeofencingTrigger[];
+  triggers: Trigger[];
   metadata: {
     exportedAt: string;
     totalTriggers: number;
@@ -189,7 +230,7 @@ export type {
   BaseTrigger,
   MembershipTrigger,
   PermanenceTrigger,
-  GeofencingTrigger,
+  Trigger,
   TriggersExport
 };
 
